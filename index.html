@@ -601,40 +601,43 @@ function wrapText(ctx, text, maxW) {
   });
   return out;
 }
-function slipCanvas(blocks) {
-  const W = PRINTER_W, P = 6, H = 6000, c = document.createElement('canvas');
+function slipCanvas(blocks, opt) {
+  opt = opt || {};
+  const W = opt.width || PRINTER_W, P = opt.pad || 6, k = opt.scale || 1, H = Math.round(6000 * k), c = document.createElement('canvas');
   c.width = W; c.height = H;
   const x = c.getContext('2d');
-  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.fillStyle = '#000'; x.textBaseline = 'top';
-  const font = (sz, b) => (b === false ? '400 ' : '700 ') + sz + 'px "Atkinson Hyperlegible", Arial, sans-serif';
-  let y = 4;
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.textBaseline = 'top';
+  const fam = opt.family || '"Atkinson Hyperlegible", Arial, sans-serif';
+  const font = (sz, b) => (b === false ? '400 ' : '700 ') + sz + 'px ' + fam;
+  let y = opt.top || 4;
   for (const b of blocks) {
-    if (y > H - 200) break;
-    if (b.gap) { y += b.gap; continue; }
-    if (b.rule) { x.fillRect(P, y + 6, W - 2 * P, 3); y += 18; continue; }
-    if (b.dash) { for (let i = P; i < W - P; i += 14) x.fillRect(i, y + 7, 8, 2); y += 18; continue; }
+    if (y > H - 200 * k) break;
+    x.fillStyle = x.strokeStyle = b.color || '#000';
+    if (b.gap) { y += b.gap * k; continue; }
+    if (b.rule) { x.fillRect(P, y + 6 * k, W - 2 * P, Math.max(2, 3 * k * (b.thin ? 0.4 : 1))); y += 18 * k; continue; }
+    if (b.dash) { for (let i = P; i < W - P; i += 14 * k) x.fillRect(i, y + 7 * k, 8 * k, 2 * k); y += 18 * k; continue; }
     if (b.cut) { y += 18; for (let i = 0; i < W; i += 10) x.fillRect(i, y, 5, 2); y += 22; continue; }
-    const sz = b.size || 22, lh = Math.round(sz * (b.lh || 1.25));
+    const sz = Math.round((b.size || 22) * k), lh = Math.round(sz * (b.lh || 1.25)), ind = (b.indent || 0) * k;
     x.font = font(sz, b.bold);
     if (b.cols) {
       const right = String(b.cols[1] ?? ''), rw = x.measureText(right).width;
-      const lines = wrapText(x, b.cols[0], W - 2 * P - rw - 14);
-      lines.forEach((ln, i) => { x.fillText(ln, P, y); if (i === 0) x.fillText(right, W - P - rw, y); y += lh; });
+      const lines = wrapText(x, b.cols[0], W - 2 * P - rw - 14 * k - ind);
+      lines.forEach((ln, i) => { x.fillText(ln, P + ind, y); if (i === 0) x.fillText(right, W - P - rw, y); y += lh; });
       continue;
     }
-    const lines = wrapText(x, b.text, W - 2 * P - (b.box ? 20 : 0));
+    const lines = wrapText(x, b.text, W - 2 * P - (b.box ? 20 * k : 0) - ind);
     const top = y;
-    if (b.box) y += 10;
+    if (b.box) y += 10 * k;
     for (const ln of lines) {
       const w = x.measureText(ln).width;
-      const lx = b.align === 'center' ? (W - w) / 2 : b.align === 'right' ? W - P - w : P + (b.box ? 10 : 0);
+      const lx = b.align === 'center' ? (W - w) / 2 : b.align === 'right' ? W - P - w : P + ind + (b.box ? 10 * k : 0);
       x.fillText(ln, lx, y); y += lh;
     }
-    if (b.box) { y += 6; x.lineWidth = 3; x.strokeRect(P + 1, top + 1, W - 2 * P - 2, y - top - 2); y += 8; }
+    if (b.box) { y += 6 * k; x.lineWidth = 3 * k; x.strokeRect(P + 1, top + 1, W - 2 * P - 2, y - top - 2); y += 8 * k; }
   }
-  y += 6;
-  const out = document.createElement('canvas'); out.width = W; out.height = Math.max(40, y);
-  out.getContext('2d').drawImage(c, 0, 0);
+  y += 6 * k;
+  const out = document.createElement('canvas'); out.width = W; out.height = Math.max(40, Math.round(y + (opt.bottom || 0)));
+  const ox = out.getContext('2d'); ox.fillStyle = '#fff'; ox.fillRect(0, 0, W, out.height); ox.drawImage(c, 0, 0);
   return out;
 }
 async function fontsReady() {
@@ -886,11 +889,13 @@ VIEWS.doc = p => {
     ${d.type === 'quote' && d.status !== 'accepted' ? `<button class="btn primary wide" data-act="quoteToInvoice" data-id="${d.id}">Turn into invoice</button>` : ''}
     <button class="btn" data-act="printReceipt" data-id="${d.id}">${d.type === 'quote' ? 'Print quote slip' : bal <= 0.005 ? 'Print receipt' : 'Print invoice slip'}</button>
     <button class="btn" data-act="printDocLabel" data-id="${d.id}">Print label</button>
+    <button class="btn" data-act="shareDoc" data-id="${d.id}">WhatsApp or share</button>
     <button class="btn" data-act="emailDoc" data-id="${d.id}">Email</button>
     <button class="btn" data-act="a4Doc" data-id="${d.id}">Print or save PDF</button>
     <button class="btn" data-act="editDoc" data-id="${d.id}">Edit</button>
     <button class="btn danger" data-act="voidDoc" data-id="${d.id}">${pays.length ? 'Void' : 'Delete'}</button>
   </div>
+  ${d.sharedAt ? `<p class="hint">Shared (${esc(d.sharedVia || 'PDF')}) ${fmtDate(isoOf(new Date(d.sharedAt)))}.</p>` : ''}
   ${d.emailedAt ? `<p class="hint">Emailed ${fmtDate(isoOf(new Date(d.emailedAt)))} to ${esc(d.emailedTo || '')}.</p>` : ''}`;
 };
 ACT.printReceipt = d => printPreview('Receipt slip', receiptBlocks(get('docs', d.id)));
@@ -960,7 +965,7 @@ function emailSheet(o) {
     el.disabled = true; el.textContent = 'Sending…';
     try {
       const html = `<div style="font-family:Arial,sans-serif;font-size:14px">${esc(msg).replace(/\n/g, '<br>')}</div><hr style="margin:18px 0;border:0;border-top:1px solid #ddd">${o.inner}`;
-      await api('email', {to, subject, html, text: msg, pdfHtml: $('#emPdf').checked ? wrapHTML(o.filename, o.inner) : '', filename: o.filename + '.pdf', fromName: o.fromName, replyTo: o.replyTo || ''});
+      await api('email', {to, subject, html, text: msg, pdfHtml: $('#emPdf').checked ? wrapHTML(o.filename, o.inner) : '', filename: o.filename + '.pdf', fromName: o.fromName, replyTo: o.replyTo || '', from: o.replyTo || ''});
       if (o.onSent) o.onSent(to);
       closeSheet(() => { toast('Email sent to ' + to); render(); });
     } catch (e) { el.disabled = false; el.textContent = 'Try again'; toast('Email not sent: ' + e.message); }
@@ -1431,8 +1436,8 @@ VIEWS.customer = p => {
     ${c.phone ? `<a class="btn" href="tel:${esc(c.phone.replace(/\s/g, ''))}">Call</a><a class="btn" href="https://wa.me/${waNumber(c.phone)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
     <button class="btn" data-act="newDoc" data-mode="invoice" data-cust="${c.id}">New invoice</button>
     <button class="btn" data-act="newDoc" data-mode="quote" data-cust="${c.id}">New quote</button>
-    ${owe.tlob ? `<button class="btn" data-act="statement" data-v="tlob">Email tLOB statement</button>` : ''}
-    ${owe.bfs ? `<button class="btn" data-act="statement" data-v="bfs">Email Blaise statement</button>` : ''}
+    ${owe.tlob ? `<button class="btn" data-act="shareStatement" data-v="tlob">Share tLOB statement</button><button class="btn" data-act="statement" data-v="tlob">Email tLOB statement</button>` : ''}
+    ${owe.bfs ? `<button class="btn" data-act="shareStatement" data-v="bfs">Share Blaise statement</button><button class="btn" data-act="statement" data-v="bfs">Email Blaise statement</button>` : ''}
     <button class="btn" data-act="editCustomer">Edit details</button>
   </div>
   ${pre.length ? `<h3>Waiting for books</h3><div class="list">${pre.map(x => { const sh = get('shipments', x.shipmentId); return sh ? `<button class="row" data-act="go" data-view="shipment" data-id="${sh.id}"><span class="main"><span class="t">${esc(sh.title)}${x.qty > 1 ? ' × ' + x.qty : ''}</span><span class="s">${SHIP_STATUS[sh.status]}</span></span></button>` : ''; }).join('')}</div>` : ''}
@@ -1541,6 +1546,146 @@ function editExpense(e) {
   ACT.exSaveMore = () => { const r = doSave(); if (r) closeSheet(() => { toast('Saved. Add the next line.'); editExpense({date: r.date, venture: r.venture, supplier: r.supplier, shipmentId: r.shipmentId, ref: r.ref, type: r.type === 'border' ? 'duty' : 'border'}); }); };
   ACT.exDelete = () => { if (!confirmFiled(e.date) || !confirm('Delete this expense?')) return; remove('expenses', e.id); closeSheet(() => { toast('Expense deleted'); render(); }); };
 }
+
+/* ---------- PDF on the phone, shared to WhatsApp or anywhere else ---------- */
+const JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+let jspdfLoading = null;
+function loadJsPDF() {
+  if (window.jspdf) return Promise.resolve();
+  if (!jspdfLoading) jspdfLoading = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = JSPDF_URL;
+    s.onload = () => res();
+    s.onerror = () => { jspdfLoading = null; s.remove(); rej(new Error('The PDF maker could not load. Check the phone has internet.')); };
+    document.head.appendChild(s);
+  });
+  return jspdfLoading;
+}
+const ventureColour = v => v === 'bfs' ? '#3D6A3E' : '#7B2232';
+const GREY = '#555555';
+function letterheadBlocks(v) {
+  const x = S().ventures[v], b = [{text: x.name, size: 34, color: ventureColour(v), lh: 1.15}];
+  if (x.address) b.push({text: x.address, size: 18, bold: false, color: GREY});
+  const contact = [x.phone, x.email].filter(Boolean).join('    ');
+  if (contact) b.push({text: contact, size: 18, bold: false, color: GREY});
+  return b;
+}
+function a4DocBlocks(d) {
+  const s = S(), v = s.ventures[d.venture], t = docTotals(d), pays = d.type === 'invoice' ? docPayments(d) : [];
+  const paid = sum(pays, p => p.amount), bal = r2(t.total - paid), c = get('customers', d.customerId), col = ventureColour(d.venture);
+  const b = letterheadBlocks(d.venture);
+  b.push({gap: 18}, {text: docTitle(d), size: 30}, {cols: [(d.type === 'quote' ? 'Quote ' : 'Invoice ') + d.number, fmtDate(d.date)], size: 20, bold: false});
+  if (d.type !== 'quote' && s.gstNumber) b.push({text: 'GST number ' + s.gstNumber, size: 20, bold: false});
+  if (d.type === 'invoice' && bal > 0.005 && d.due) b.push({text: 'Due ' + fmtDate(d.due), size: 20});
+  if (d.type === 'quote' && d.validUntil) b.push({text: 'Valid until ' + fmtDate(d.validUntil), size: 20, bold: false});
+  b.push({gap: 14}, {text: d.type === 'quote' ? 'Prepared for' : 'Bill to', size: 16, bold: false, color: GREY}, {text: c ? c.name : (d.customerName || 'Customer'), size: 22});
+  if (c) { const det = [c.address, c.phone, c.email].filter(Boolean).join('    '); if (det) b.push({text: det, size: 18, bold: false, color: GREY}); }
+  b.push({gap: 14}, {cols: ['Description', 'Amount'], size: 18, color: col}, {rule: 1, thin: 1, color: col});
+  (d.lines || []).forEach(l => {
+    b.push({cols: [l.desc, money(lineAmt(l))], size: 21, bold: false});
+    if (+l.qty !== 1) b.push({text: (+l.qty) + ' × ' + money(l.unit) + (d.excl ? ' excl. GST' : ''), size: 17, bold: false, color: GREY, indent: 16});
+    b.push({gap: 4});
+  });
+  b.push({rule: 1, thin: 1});
+  if (d.excl) b.push({cols: ['Subtotal excl. GST', money(t.net)], size: 20, bold: false}, {cols: ['GST 15%', money(t.gst)], size: 20, bold: false});
+  b.push({cols: ['Total', money(t.total)], size: 26});
+  if (!d.excl && !d.zeroRated) b.push({cols: ['Includes GST', money(t.gst)], size: 18, bold: false, color: GREY});
+  if (d.zeroRated) b.push({text: 'Zero-rated export, no GST', size: 18, bold: false, color: GREY});
+  pays.forEach(p => b.push({cols: ['Paid ' + fmtDate(p.date) + (p.method ? ' (' + p.method + ')' : ''), '−' + money(p.amount)], size: 20, bold: false}));
+  if (d.type === 'invoice' && pays.length) b.push({cols: [bal > 0.005 ? 'Balance due' : 'Paid in full', money(Math.max(0, bal))], size: 24});
+  if (d.notes) b.push({gap: 14}, {text: d.notes, size: 19, bold: false});
+  if (d.type === 'invoice' && bal > 0.005 && s.bankAccount)
+    b.push({gap: 18}, {text: 'How to pay', size: 20}, {text: 'Bank transfer to ' + s.bankAccount + (s.bankName ? ' (' + s.bankName + ')' : '') + (s.ownerName ? ', account name ' + s.ownerName : '') + '. Please use ' + d.number + ' as the reference.', size: 19, bold: false});
+  b.push({gap: 28}, {text: v.footer || '', size: 18, bold: false, align: 'center', color: GREY});
+  return b;
+}
+function a4StatementBlocks(c, venture) {
+  const s = S(), col = ventureColour(venture);
+  const docs = all('docs').filter(d => d.customerId === c.id && d.venture === venture && d.type === 'invoice' && !d.void && docBalance(d) > 0.005).sort((a, b) => a.date < b.date ? -1 : 1);
+  const b = letterheadBlocks(venture);
+  b.push({gap: 18}, {text: 'Statement', size: 30}, {text: 'For ' + c.name + ', as at ' + fmtDate(today()), size: 20, bold: false},
+    {gap: 14}, {cols: ['Invoice', 'Owing'], size: 18, color: col}, {rule: 1, thin: 1, color: col});
+  docs.forEach(d => b.push({cols: [d.number + ', ' + fmtDate(d.date) + (d.due ? ' (due ' + fmtDate(d.due) + ')' : ''), money(docBalance(d))], size: 20, bold: false},
+    {text: 'Total ' + money(docTotals(d).total) + ', paid ' + money(docPaid(d)), size: 17, bold: false, color: GREY, indent: 16}, {gap: 4}));
+  if (!docs.length) b.push({text: 'Nothing is owing. Thank you.', size: 20, bold: false});
+  b.push({rule: 1, thin: 1}, {cols: ['Total owing', money(sum(docs, docBalance))], size: 26});
+  if (docs.length && s.bankAccount) b.push({gap: 18}, {text: 'Please pay by bank transfer to ' + s.bankAccount + ', using the invoice number as the reference.', size: 19, bold: false});
+  return b;
+}
+async function makePdf(blocks, name) {
+  await Promise.all([loadJsPDF(), fontsReady()]);
+  const W = 1240, PH = 1754, M = 110, CH = PH - 2 * M; // A4 at 150 dpi with 18 mm margins
+  const cv = slipCanvas(blocks, {width: W, pad: M, scale: 1.5, top: 0});
+  const ctx = cv.getContext('2d');
+  const blankRow = r => { const px = ctx.getImageData(0, r, W, 1).data; for (let i = 0; i < px.length; i += 16) if (px[i] < 240) return false; return true; };
+  const pdf = new window.jspdf.jsPDF({unit: 'mm', format: 'a4', compress: true});
+  let y = 0, page = 0;
+  while (y < cv.height - 2) {
+    let end = Math.min(cv.height, y + CH);
+    if (end < cv.height) { // break pages in a gap between items, not between an item and its detail line
+      let run = 0;
+      for (let r = end; r > end - 400; r--) { run = blankRow(r) ? run + 1 : 0; if (run >= 12) { end = r + 6; break; } }
+    }
+    const pg = document.createElement('canvas'); pg.width = W; pg.height = PH;
+    const px = pg.getContext('2d'); px.fillStyle = '#fff'; px.fillRect(0, 0, W, PH);
+    px.drawImage(cv, 0, y, W, end - y, 0, M, W, end - y);
+    if (page) pdf.addPage();
+    pdf.addImage(pg.toDataURL('image/jpeg', 0.82), 'JPEG', 0, 0, 210, 297);
+    page++; y = end;
+  }
+  return new File([pdf.output('blob')], name.replace(/[^\w\- ]+/g, '').trim() + '.pdf', {type: 'application/pdf'});
+}
+const canShareFiles = f => !!(navigator.canShare && navigator.canShare({files: [f]}));
+function shareSheet(o) {
+  let file = null;
+  openSheet(`<h2>${esc(o.heading)}</h2>
+    <label class="f"><span>Message</span><textarea id="shMsg" rows="7">${esc(o.message)}</textarea></label>
+    <div class="actions"><button class="btn primary wide" id="shPdfBtn" data-act="sharePdf" disabled>Preparing PDF…</button>
+    ${o.phone ? `<button class="btn wide" data-act="shareWa">WhatsApp message to ${esc(o.phone)}, no PDF</button>` : ''}
+    <button class="btn wide" data-act="closeSheet">Cancel</button></div>
+    <p class="hint">Share PDF opens your phone's share menu: choose WhatsApp, then the person. The message is also copied, so you can paste it into the chat if it doesn't come through.</p>`);
+  makePdf(o.blocks, o.filename).then(f => {
+    file = f; const b = $('#shPdfBtn');
+    if (b) { b.disabled = false; b.textContent = canShareFiles(f) ? 'Share PDF' : 'Download PDF'; }
+  }).catch(e => { const b = $('#shPdfBtn'); if (b) b.textContent = 'PDF not available'; toast(e.message); });
+  ACT.sharePdf = async () => {
+    if (!file) return;
+    const msg = $('#shMsg').value;
+    try { if (navigator.clipboard) await navigator.clipboard.writeText(msg); } catch (e) { /* copying is a bonus */ }
+    if (canShareFiles(file)) {
+      try { await navigator.share({files: [file], text: msg, title: file.name}); if (o.onShared) o.onShared('PDF'); closeSheet(() => render()); }
+      catch (e) { if (e.name !== 'AbortError') toast('Could not share: ' + e.message); }
+    } else {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name;
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }
+  };
+  ACT.shareWa = () => {
+    window.open('https://wa.me/' + waNumber(o.phone) + '?text=' + encodeURIComponent($('#shMsg').value), '_blank', 'noopener');
+    if (o.onShared) o.onShared('WhatsApp message');
+  };
+}
+ACT.shareDoc = d => {
+  const doc = get('docs', d.id), c = get('customers', doc.customerId), s = S(), v = s.ventures[doc.venture], t = docTotals(doc), bal = docBalance(doc);
+  const first = c ? c.name.split(' ')[0] : '';
+  const kind = doc.type === 'quote' ? 'quote' : bal <= 0.005 ? 'receipt' : 'invoice';
+  let msg = `Kia ora${first ? ' ' + first : ''}, `;
+  if (kind === 'quote') msg += `here is our quote ${doc.number} for ${money(t.total)}${doc.validUntil ? ', valid until ' + fmtDate(doc.validUntil) : ''}.`;
+  else if (kind === 'receipt') msg += `thank you for your payment. Here is your receipt ${doc.number} for ${money(t.total)}.`;
+  else {
+    msg += `here is invoice ${doc.number} for ${money(t.total)}` + (bal < t.total ? ` (${money(bal)} still owing)` : '') + (doc.due ? `, due ${fmtDate(doc.due)}` : '') + '.';
+    if (s.bankAccount) msg += `\n\nBank transfer to ${s.bankAccount}${s.ownerName ? ' (' + s.ownerName + ')' : ''}, reference ${doc.number}.`;
+  }
+  msg += `\n\nNgā mihi,\n${s.ownerName || v.name}, ${v.name}`;
+  shareSheet({heading: 'Share ' + kind, message: msg, blocks: a4DocBlocks(doc), filename: doc.number, phone: c ? c.phone : '',
+    onShared: via => put('docs', {...get('docs', doc.id), sharedAt: Date.now(), sharedVia: via})});
+};
+ACT.shareStatement = d => {
+  const c = get('customers', state.p.id), s = S(), v = s.ventures[d.v];
+  const owing = sum(all('docs').filter(x => x.customerId === c.id && x.venture === d.v), docBalance);
+  const msg = `Kia ora ${c.name.split(' ')[0]}, here is your statement from ${v.name}. The total owing is ${money(owing)}.` +
+    (s.bankAccount ? `\n\nBank transfer to ${s.bankAccount}, with the invoice number as the reference.` : '') + `\n\nNgā mihi,\n${s.ownerName || v.name}`;
+  shareSheet({heading: 'Share statement', message: msg, blocks: a4StatementBlocks(c, d.v), filename: 'Statement ' + c.name, phone: c.phone});
+};
 
 /* ---------- GST RETURN ---------- */
 VIEWS.gst = p => {
