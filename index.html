@@ -650,7 +650,7 @@ function receiptBlocks(d) {
   const s = S(), v = s.ventures[d.venture], t = docTotals(d), pays = docPayments(d), paid = docPaid(d), bal = r2(t.total - paid);
   const c = get('customers', d.customerId);
   const b = [{text: v.name, size: 30, align: 'center', lh: 1.15}];
-  if (v.address) b.push({text: v.address, size: 18, align: 'center', bold: false});
+  if (v.address) b.push({text: v.address.split(/\s*\n\s*/).filter(Boolean).join(', '), size: 18, align: 'center', bold: false});
   if (v.phone || v.email) b.push({text: [v.phone, v.email].filter(Boolean).join('  '), size: 18, align: 'center', bold: false});
   if (s.gstNumber && d.type !== 'quote') b.push({text: 'GST No. ' + s.gstNumber, size: 20, align: 'center'});
   b.push({rule: 1}, {text: docTitle(d).toUpperCase(), size: 26, align: 'center'});
@@ -697,6 +697,7 @@ function docLabel(d) {
 }
 
 /* ---------- print preview sheet ---------- */
+const darkPct = e => Math.round(((+e || 12000) - 4000) / 360);
 async function printPreview(title, blocks, opts) {
   await fontsReady();
   const cv = slipCanvas(blocks);
@@ -704,13 +705,17 @@ async function printPreview(title, blocks, opts) {
   openSheet(`<h2>${esc(title)}</h2>
     <p class="sub">This is what the printer will produce, at actual print width.</p>
     <div class="slip"><img src="${img}" alt="Print preview"></div>
+    <label class="f"><span>Darkness: <b id="pvDarkVal">${darkPct(DEV.energy)}%</b></span>
+      <input id="pvDark" type="range" min="4000" max="40000" step="1000" value="${DEV.energy}" aria-label="Print darkness"></label>
     <label class="f"><span>Copies</span><div class="stepper">
       <button class="btn small" data-act="copies" data-d="-1" aria-label="One fewer">−</button>
       <input id="copies" type="number" min="1" max="20" value="${(opts && opts.copies) || 1}" inputmode="numeric">
       <button class="btn small" data-act="copies" data-d="1" aria-label="One more">+</button></div></label>
     <div class="actions"><button class="btn primary wide" data-act="doPrint">${Printer.connected ? 'Print' : 'Connect printer and print'}</button>
     <button class="btn wide" data-act="closeSheet">Close</button></div>
-    <p class="hint">Printer: <span id="printerStatus">${Printer.connected ? 'Connected' : 'Not connected'}</span>. Turn the MX06 on and keep it near the phone.</p>`);
+    <p class="hint">Printer: <span id="printerStatus">${Printer.connected ? 'Connected' : 'Not connected'}</span>. Turn the MX06 on and keep it nearby. Darkness is remembered on this device.</p>`, sh => {
+      $('#pvDark', sh).addEventListener('input', e => { DEV.energy = +e.target.value; saveDev(); $('#pvDarkVal').textContent = darkPct(DEV.energy) + '%'; });
+    });
   ACT.doPrint = async (_, el) => {
     el.disabled = true; el.textContent = 'Printing…';
     try { await Printer.printCanvas(cv, Math.max(1, Math.min(20, num($('#copies').value)))); toast('Printed'); closeSheet(); }
@@ -1788,7 +1793,7 @@ VIEWS.settings = () => {
 
   <h3>Printer</h3><div class="card">
     <p style="margin-top:0">Status: <b id="printerStatus">${Printer.connected ? 'Connected to ' + esc(Printer.device.name) : 'Not connected'}</b></p>
-    <label class="f"><span>Darkness</span><input id="d_energy" type="range" min="4000" max="40000" step="1000" value="${DEV.energy}"></label>
+    <label class="f"><span>Darkness: <b id="d_energyVal">${darkPct(DEV.energy)}%</b></span><input id="d_energy" type="range" min="4000" max="40000" step="1000" value="${DEV.energy}"></label>
     <div class="actions" style="margin-bottom:0"><button class="btn primary" data-act="printerConnect">${Printer.connected ? 'Reconnect' : 'Connect printer'}</button><button class="btn" data-act="printerTest">Test print</button>
     ${Printer.connected ? '<button class="btn" data-act="printerOff">Disconnect</button>' : ''}</div>
     <p class="hint">Turn the MX06 on, then tap Connect and choose it from the list. If printing stops partway, set Packet size to 20.</p>
@@ -1806,7 +1811,7 @@ VIEWS.settings = () => {
   </div>`;
 };
 VIEWS.settings.mount = () => {
-  $('#d_energy').addEventListener('change', e => { DEV.energy = +e.target.value; saveDev(); toast('Darkness saved'); });
+  $('#d_energy').addEventListener('input', e => { DEV.energy = +e.target.value; saveDev(); $('#d_energyVal').textContent = darkPct(DEV.energy) + '%'; });
   $('#importFile').addEventListener('change', importBackup);
 };
 ACT.saveSettings = () => {
