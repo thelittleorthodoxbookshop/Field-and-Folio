@@ -1,0 +1,1731 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F2A33">
+<title>Field &amp; Folio</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3F5F2; --card:#FFFFFF; --ink:#1F2A33; --muted:#56616B; --line:#D5DBD6; --soft:#E8ECE8;
+  --tlob:#7B2232; --tlob-soft:#F5E8EA; --bfs:#3D6A3E; --bfs-soft:#E6EFE5;
+  --warn:#8A5200; --warn-soft:#FBEFD9; --bad:#A3271F; --bad-soft:#F8E2DF; --good:#2D6A38; --good-soft:#E1EFE3;
+  --accent:var(--ink); --r:10px;
+  --font:'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --serif:'Source Serif 4', Georgia, 'Times New Roman', serif;
+}
+body.v-tlob{--accent:var(--tlob)}
+body.v-bfs{--accent:var(--bfs)}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.45 var(--font)}
+header.top{position:sticky;top:0;z-index:20;background:var(--accent);color:#fff;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;display:flex;align-items:center;gap:10px;transition:background .25s}
+header.top h1{font:700 1.2rem/1.2 var(--serif);margin:0;flex:1;letter-spacing:.01em}
+header.top .who{font-size:.8rem;opacity:.85;font-weight:400;font-family:var(--font);display:block}
+.sync{font:inherit;font-size:.8rem;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:99px;padding:7px 11px;cursor:pointer}
+.dot{width:9px;height:9px;border-radius:50%;background:#A9B3BB;flex:none}
+.dot.ok{background:#83D892}.dot.err{background:#FF9585}.dot.busy{background:#FFD36B}
+main{max-width:720px;margin:0 auto;padding:16px 16px calc(100px + env(safe-area-inset-bottom,0px))}
+nav.bottom{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.bottom button{background:none;border:0;padding:8px 2px 9px;font:inherit;font-size:.75rem;color:var(--muted);
+  display:flex;flex-direction:column;align-items:center;gap:3px;min-height:60px;cursor:pointer}
+nav.bottom svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav.bottom button.on{color:var(--ink);font-weight:700}
+nav.bottom button.on svg{stroke-width:2.4}
+h2{font:700 1.6rem/1.2 var(--serif);margin:6px 0 4px}
+.sub{color:var(--muted);margin:0 0 16px}
+h3{font:700 1.05rem/1.3 var(--font);margin:24px 0 8px}
+p{margin:0 0 10px}
+a{color:inherit}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card.note{background:var(--warn-soft);border-color:#EBD3A6}
+.card.note.info{background:#E9EFF6;border-color:#C9D6E6}
+.list{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:0;border-bottom:1px solid var(--soft);width:100%;
+  background:none;text-align:left;font:inherit;color:inherit;min-height:56px}
+.row:last-child{border-bottom:0}
+button.row{cursor:pointer}
+button.row:active{background:var(--soft)}
+.row .main{flex:1;min-width:0}
+.row .t{display:block;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .s{display:block;color:var(--muted);font-size:.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .amt{font-variant-numeric:tabular-nums;font-weight:700;text-align:right;white-space:nowrap}
+.row .amt small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+.bar{width:5px;align-self:stretch;border-radius:3px;background:var(--line);flex:none}
+.bar.tlob{background:var(--tlob)}.bar.bfs{background:var(--bfs)}
+.chip{display:inline-block;font-size:.78rem;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.chip.paid{background:var(--good-soft);color:var(--good)}
+.chip.overdue{background:var(--bad-soft);color:var(--bad)}
+.chip.part,.chip.unpaid{background:var(--warn-soft);color:var(--warn)}
+.chip.quote{background:#E4E9F2;color:#33507A}
+.chip.tlob{background:var(--tlob-soft);color:var(--tlob)}
+.chip.bfs{background:var(--bfs-soft);color:var(--bfs)}
+.btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--ink);font:700 1rem/1.2 var(--font);
+  padding:12px 14px;border-radius:var(--r);min-height:50px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;text-align:center}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.block{width:100%}
+.btn.small{min-height:40px;padding:8px 12px;font-size:.92rem}
+.btn.danger{color:var(--bad)}
+.btn.ghost{background:none;border-color:transparent;text-decoration:underline;color:var(--muted)}
+.btn:disabled{opacity:.5;cursor:default}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.actions .wide{grid-column:1/-1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end}
+label.f{display:block;margin-bottom:12px}
+label.f>span{display:block;font-size:.875rem;color:var(--muted);margin-bottom:4px}
+label.f.sm{margin-bottom:0}
+.hint{font-size:.85rem;color:var(--muted);margin-top:4px}
+input,select,textarea{width:100%;font:inherit;padding:11px 12px;border:1px solid #B9C2BB;border-radius:8px;background:#fff;color:var(--ink);min-height:48px}
+input[readonly]{background:var(--soft)}
+textarea{min-height:84px;resize:vertical}
+label.check{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;cursor:pointer}
+label.check input{width:22px;height:22px;min-height:0;margin:1px 0 0;flex:none;accent-color:var(--accent)}
+input:focus,select:focus,textarea:focus{outline:3px solid #8DB2D8;outline-offset:0;border-color:#5B87B5}
+.btn:focus-visible,button:focus-visible{outline:3px solid #8DB2D8;outline-offset:2px}
+.seg{display:flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:12px;background:var(--card)}
+.seg button{flex:1;border:0;border-right:1px solid var(--line);background:none;font:700 .95rem var(--font);padding:11px 6px;color:var(--muted);min-height:48px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--accent);color:#fff}
+.seg.venture button[data-v=tlob].on{background:var(--tlob)}
+.seg.venture button[data-v=bfs].on{background:var(--bfs)}
+.money,.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.empty{padding:26px 16px;text-align:center;color:var(--muted)}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--soft)}
+.kv:last-child{border-bottom:0}
+.kv b{font-variant-numeric:tabular-nums}
+.kv.total{font-size:1.15rem;border-top:2px solid var(--ink);border-bottom:0;padding-top:10px;margin-top:4px}
+.line-card{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;background:#fff}
+.line-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.icon-btn{border:0;background:none;font-size:1.1rem;width:40px;height:40px;border-radius:8px;cursor:pointer;color:var(--muted)}
+.lt{display:flex;flex-direction:column;justify-content:flex-end;text-align:right;padding-bottom:12px}
+.lt span{font-size:.875rem;color:var(--muted)}
+.lt b{font-variant-numeric:tabular-nums}
+.pickres{margin-top:6px}
+.doc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.doc-lines{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.doc-lines td{padding:7px 0;border-bottom:1px solid var(--soft);vertical-align:top}
+.doc-lines td.r{text-align:right;white-space:nowrap;padding-left:10px}
+.boxes .kv span{max-width:72%}
+.boxes .kv .n{display:inline-block;min-width:2.2em;color:var(--muted)}
+details{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:12px}
+details summary{padding:14px;font-weight:700;cursor:pointer}
+details>div{padding:0 14px 14px}
+.sheet-wrap{position:fixed;inset:0;background:rgba(18,26,32,.5);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--paper);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;
+  padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px));animation:up .2s ease-out}
+.sheet h2{margin-top:0}
+@keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 62px);transform:translateX(-50%);background:var(--ink);color:#fff;
+  padding:11px 16px;border-radius:8px;z-index:70;max-width:90vw;box-shadow:0 4px 18px rgba(0,0,0,.2)}
+/* The thermal slip: a preview of exactly what the MX06 will print */
+.slip{width:100%;max-width:320px;margin:4px auto 14px;background:#fff;padding:8px 0 14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.08),0 6px 20px rgba(31,42,51,.12);
+  -webkit-mask:linear-gradient(#000,#000) top/100% calc(100% - 8px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x;
+  mask:linear-gradient(#000,#000) top/100% calc(100% - 8px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x}
+.slip img{display:block;width:100%;image-rendering:pixelated}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper input{text-align:center;width:70px}
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.pill-row .btn{min-height:42px;padding:8px 12px;font-size:.92rem}
+.search{margin-bottom:12px}
+.section-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.section-title a,.linkish{font-size:.9rem;color:var(--muted);background:none;border:0;font:inherit;font-size:.9rem;text-decoration:underline;cursor:pointer;padding:6px 0}
+@media (min-width:600px){.actions{grid-template-columns:repeat(3,1fr)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media print{header.top,nav.bottom{display:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1 id="appTitle">Field &amp; Folio</h1>
+  <button class="sync" id="syncBtn" data-act="syncNow" aria-label="Sync now"><span class="dot" id="syncDot"></span><span id="syncTxt">This device only</span></button>
+</header>
+<main id="main"></main>
+<nav class="bottom" id="nav">
+  <button data-act="nav" data-view="home"><svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 4l8.5 6.5V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg>Home</button>
+  <button data-act="nav" data-view="sales"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3"/></svg>Sales</button>
+  <button data-act="nav" data-view="shipments"><svg viewBox="0 0 24 24"><path d="M3 7.5 12 3.5l9 4v9l-9 4-9-4zM3 7.5l9 4 9-4M12 11.5v9"/></svg>Shipments</button>
+  <button data-act="nav" data-view="customers"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c1.9.6 3.1 2.4 3.5 5.2"/></svg>People</button>
+  <button data-act="nav" data-view="more"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>More</button>
+</nav>
+<div id="sheetRoot"></div>
+<div id="toastRoot"></div>
+<script>
+'use strict';
+/* =========================================================
+   Field & Folio — sales, GST and CRM for Blaise Field Services
+   and The Little Orthodox Bookshop. Version 1.0
+   ========================================================= */
+const APP_VERSION = '1.0';
+const LS_KEY = 'ff.data.v1', LS_DEV = 'ff.device.v1';
+const COLLS = ['settings','customers','items','docs','payments','expenses','shipments','preorders','moves'];
+const GST_RATE = 0.15;
+
+/* ---------- small utilities ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const r2 = n => Math.round(((+n || 0) + Number.EPSILON) * 100) / 100;
+const num = v => { const n = parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, '')); return isFinite(n) ? n : 0; };
+const money = n => (n < 0 ? '-$' : '$') + Math.abs(r2(n)).toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const pad = n => String(n).padStart(2, '0');
+const isoOf = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const today = () => isoOf(new Date());
+const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return isoOf(d); };
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtDate = iso => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return (+d) + ' ' + MON[m - 1] + ' ' + y; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sum = (arr, f) => r2(arr.reduce((s, x) => s + (+f(x) || 0), 0));
+
+/* ---------- storage ---------- */
+let DB, DEV;
+function emptyDB() { const data = {}; COLLS.forEach(c => data[c] = {}); return {data, meta: {lastSync: 0, dirty: {}}}; }
+function load() {
+  try { DB = JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) { DB = null; }
+  if (!DB || !DB.data) DB = emptyDB();
+  COLLS.forEach(c => { if (!DB.data[c]) DB.data[c] = {}; });
+  DB.meta = DB.meta || {lastSync: 0, dirty: {}};
+  DB.meta.dirty = DB.meta.dirty || {};
+  try { DEV = JSON.parse(localStorage.getItem(LS_DEV)) || {}; } catch (e) { DEV = {}; }
+  DEV = Object.assign({syncUrl: '', token: '', energy: 12000, chunk: 180, delay: 20, lastVenture: 'tlob'}, DEV);
+}
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+  catch (e) { toast('This device could not save: its storage is full. Export a backup from Settings.'); }
+}
+function saveDev() { localStorage.setItem(LS_DEV, JSON.stringify(DEV)); }
+function put(c, rec) {
+  rec.id = rec.id || uid();
+  rec.createdAt = rec.createdAt || Date.now();
+  const prev = DB.data[c][rec.id];
+  rec.updatedAt = Math.max(Date.now(), prev ? (prev.updatedAt || 0) + 1 : 0);
+  DB.data[c][rec.id] = rec;
+  DB.meta.dirty[c + '|' + rec.id] = 1;
+  save(); queueSync();
+  return rec;
+}
+function remove(c, id) { const r = DB.data[c][id]; if (r) put(c, {...r, deleted: true}); }
+function all(c) { return Object.values(DB.data[c]).filter(r => !r.deleted); }
+function get(c, id) { const r = id && DB.data[c][id]; return r && !r.deleted ? r : null; }
+
+/* ---------- settings (synced between devices) ---------- */
+function defaultSettings() {
+  return {
+    id: 'main', ownerName: '', gstNumber: '', bankAccount: '', bankName: '',
+    gstCycle: 'odd', startDate: '2026-10-01',
+    labourRate: 0, travelRate: 0, markup: 20, terms: 14, quoteDays: 30,
+    ventures: {
+      tlob: {name: 'The Little Orthodox Bookshop', short: 'TLOB', email: '', phone: '', address: '', excl: false,
+             footer: 'Thank you for your order.'},
+      bfs: {name: 'Blaise Field Services', short: 'BFS', email: '', phone: '', address: '', excl: false,
+            footer: 'Thank you for your business.'}
+    },
+    filed: {}, gstAdjust: {}
+  };
+}
+function S() {
+  const s = DB.data.settings.main || {}, d = defaultSettings();
+  return {...d, ...s,
+    ventures: {tlob: {...d.ventures.tlob, ...((s.ventures || {}).tlob || {})}, bfs: {...d.ventures.bfs, ...((s.ventures || {}).bfs || {})}},
+    filed: {...(s.filed || {})}, gstAdjust: {...(s.gstAdjust || {})}};
+}
+function saveSettings(patch) { put('settings', {...S(), ...patch, id: 'main'}); }
+const vName = v => S().ventures[v] ? S().ventures[v].name : v;
+const vShort = v => v === 'bfs' ? 'Blaise' : 'tLOB';
+
+/* ---------- sync with the Google Sheet ---------- */
+let syncTimer = null, syncing = false, syncAgain = false;
+function queueSync() { if (!DEV.syncUrl) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => sync(false), 1500); }
+async function api(action, payload) {
+  if (!DEV.syncUrl) throw new Error('Connect your Google Sheet in Settings first.');
+  const res = await fetch(DEV.syncUrl, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
+    body: JSON.stringify(Object.assign({token: DEV.token, action}, payload || {}))});
+  if (!res.ok) throw new Error('The sheet replied with error ' + res.status);
+  let j; try { j = await res.json(); } catch (e) { throw new Error('The sheet address looks wrong. Check it in Settings.'); }
+  if (!j.ok) throw new Error(j.error || 'The sheet reported a problem.');
+  return j;
+}
+function setSync(s, msg) {
+  const dot = $('#syncDot'), txt = $('#syncTxt');
+  if (!dot) return;
+  dot.className = 'dot' + (s === 'ok' ? ' ok' : s === 'err' ? ' err' : s === 'busy' ? ' busy' : '');
+  const pending = Object.keys(DB.meta.dirty).length;
+  txt.textContent = s === 'off' ? 'This device only' : s === 'busy' ? 'Syncing…' : s === 'err' ? 'Not synced' + (pending ? ' (' + pending + ')' : '') : 'Synced';
+  $('#syncBtn').title = msg || '';
+}
+async function sync(manual) {
+  if (!DEV.syncUrl) { setSync('off'); if (manual) go('settings'); return; }
+  if (syncing) { syncAgain = true; return; }
+  syncing = true; setSync('busy');
+  try {
+    const changes = [];
+    for (const k of Object.keys(DB.meta.dirty)) {
+      const i = k.indexOf('|'), c = k.slice(0, i), id = k.slice(i + 1);
+      const r = DB.data[c] && DB.data[c][id];
+      if (r) changes.push({c, id, u: r.updatedAt, d: r}); else delete DB.meta.dirty[k];
+    }
+    const j = await api('sync', {since: DB.meta.lastSync || 0, changes});
+    for (const ch of changes) { const cur = DB.data[ch.c][ch.id]; if (cur && cur.updatedAt === ch.u) delete DB.meta.dirty[ch.c + '|' + ch.id]; }
+    let changed = 0;
+    for (const r of j.records || []) {
+      if (!DB.data[r.c]) continue;
+      const cur = DB.data[r.c][r.id];
+      if (!cur || r.u > (cur.updatedAt || 0)) { DB.data[r.c][r.id] = r.d; changed++; }
+    }
+    DB.meta.lastSync = j.serverTime; DB.meta.lastSyncAt = Date.now();
+    save(); setSync('ok');
+    if (changed && !isEditing()) render();
+    if (manual) toast(changed ? 'Synced ' + changed + ' update' + (changed > 1 ? 's' : '') : 'Everything is up to date');
+  } catch (e) {
+    setSync('err', e.message);
+    if (manual) toast('Sync failed: ' + e.message);
+  } finally {
+    syncing = false;
+    if (syncAgain) { syncAgain = false; queueSync(); }
+  }
+}
+
+/* ---------- GST periods (two-monthly, cash basis) ---------- */
+function periodOf(iso, cycle) {
+  cycle = cycle || S().gstCycle;
+  let y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+  const endsOdd = cycle === 'odd';
+  let em = (m % 2 === 1) === endsOdd ? m : m + 1, ey = y;
+  if (em > 12) { em -= 12; ey++; }
+  let sm = em - 1, sy = ey;
+  if (sm < 1) { sm += 12; sy--; }
+  const lastDay = new Date(ey, em, 0).getDate();
+  const start = sy + '-' + pad(sm) + '-01', end = ey + '-' + pad(em) + '-' + pad(lastDay);
+  const label = sy === ey ? MON[sm - 1] + ' – ' + MON[em - 1] + ' ' + ey : MON[sm - 1] + ' ' + sy + ' – ' + MON[em - 1] + ' ' + ey;
+  // due: 28th of following month; Nov periods due 15 Jan, Mar periods due 7 May
+  let due;
+  if (em === 11) due = (ey + 1) + '-01-15';
+  else if (em === 3) due = ey + '-05-07';
+  else { let dm = em + 1, dy = ey; if (dm > 12) { dm = 1; dy++; } due = dy + '-' + pad(dm) + '-28'; }
+  return {key: ey + '-' + pad(em), start, end, label, due};
+}
+function prevPeriod(p) { return periodOf(addDays(p.start, -1)); }
+function periodsList() {
+  const out = [], first = periodOf(S().startDate || today());
+  let p = periodOf(today());
+  for (let i = 0; i < 60 && p.end >= first.start; i++) { out.push(p); p = prevPeriod(p); }
+  return out;
+}
+const inPeriod = (iso, p) => iso >= p.start && iso <= p.end;
+
+/* ---------- expense types and GST rules ---------- */
+const EXP_TYPES = {
+  nz: {label: 'NZ purchase, GST included', gst: a => r2(a * 3 / 23),
+       hint: 'Most NZ receipts: fuel, materials, tools, postage, phone, customs broker and clearance fees.'},
+  nogst: {label: 'NZ purchase, no GST charged', gst: () => 0,
+       hint: 'From a seller who is not GST registered, or bank fees and other exempt costs.'},
+  overseas: {label: 'Overseas supplier invoice', gst: () => 0,
+       hint: 'The supplier invoice from China, Europe or elsewhere. No NZ GST is on it; the GST is paid at the border.'},
+  border: {label: 'GST paid at the border', gst: a => r2(a),
+       hint: 'Enter only the GST amount from the Customs, NZ Post or courier import invoice. The whole amount is claimable.'},
+  duty: {label: 'Customs duty or levies', gst: () => 0,
+       hint: 'Duty and border levies carry no GST of their own. Enter them separately from the border GST.'},
+  freight: {label: 'International freight (zero-rated)', gst: () => 0,
+       hint: 'Shipping charged for getting goods to NZ from overseas.'}
+};
+const EXP_CATS = ['Book stock','Materials','Tools & equipment','Fuel & vehicle','Postage & packaging','Freight & clearance',
+  'Phone & internet','Software & subscriptions','Equipment hire','Other'];
+
+/* ---------- documents ---------- */
+const lineAmt = l => r2((+l.qty || 0) * (+l.unit || 0));
+function docTotals(d) {
+  const s = r2((d.lines || []).reduce((a, l) => a + lineAmt(l), 0));
+  if (d.zeroRated) return {net: s, gst: 0, total: s};
+  if (d.excl) { const gst = r2(s * GST_RATE); return {net: s, gst, total: r2(s + gst)}; }
+  const gst = r2(s * 3 / 23); return {net: r2(s - gst), gst, total: s};
+}
+const docPayments = d => all('payments').filter(p => p.docId === d.id).sort((a, b) => a.date < b.date ? -1 : 1);
+const docPaid = d => sum(docPayments(d), p => p.amount);
+const docBalance = d => d.type !== 'invoice' || d.void ? 0 : r2(docTotals(d).total - docPaid(d));
+function docStatus(d) {
+  if (d.void) return {k: 'void', t: 'Void'};
+  if (d.type === 'quote') return d.status === 'accepted' ? {k: 'paid', t: 'Accepted'} : d.status === 'declined' ? {k: 'void', t: 'Declined'} : {k: 'quote', t: 'Quote'};
+  const t = docTotals(d).total, p = docPaid(d);
+  if (t - p <= 0.005) return {k: 'paid', t: 'Paid'};
+  if (d.due && d.due < today()) return {k: 'overdue', t: 'Overdue'};
+  if (p > 0) return {k: 'part', t: 'Part paid'};
+  return {k: 'unpaid', t: 'Unpaid'};
+}
+function docTitle(d) {
+  if (d.type === 'quote') return 'Quote';
+  return docBalance(d) <= 0.005 && !d.void ? 'Tax invoice / receipt' : 'Tax invoice';
+}
+function nextNumber(venture, type) {
+  const short = (S().ventures[venture].short || venture).toUpperCase();
+  const prefix = (type === 'quote' ? 'Q-' : '') + short + '-';
+  let max = 0;
+  Object.values(DB.data.docs).forEach(d => {
+    if (d.venture === venture && d.type === type) { const m = String(d.number || '').match(/(\d+)$/); if (m) max = Math.max(max, +m[1]); }
+  });
+  return prefix + String(max + 1).padStart(4, '0');
+}
+const custName = (id, fallback) => { const c = get('customers', id); return c ? c.name : (fallback || 'Walk-in customer'); };
+
+/* ---------- stock ---------- */
+const stockOf = itemId => sum(all('moves').filter(m => m.itemId === itemId), m => m.qty);
+function syncDocMoves(doc) {
+  all('moves').filter(m => m.ref === doc.id && m.reason === 'sale').forEach(m => remove('moves', m.id));
+  if (doc.type !== 'invoice' || doc.void || doc.deleted) return;
+  (doc.lines || []).forEach(l => {
+    const it = l.itemId && get('items', l.itemId);
+    if (it && it.track) put('moves', {itemId: it.id, date: doc.date, qty: -(+l.qty || 0), reason: 'sale', ref: doc.id, shipmentId: doc.shipmentId || ''});
+  });
+}
+
+/* ---------- GST report ---------- */
+function gstReport(p) {
+  const s = S(), adj = s.gstAdjust[p.key] || {};
+  const pays = all('payments').filter(x => inPeriod(x.date, p)).map(x => ({...x, doc: get('docs', x.docId)})).filter(x => x.doc && !x.doc.void);
+  const exps = all('expenses').filter(x => inPeriod(x.date, p));
+  const by = {tlob: {sales: 0, gst: 0, claim: 0}, bfs: {sales: 0, gst: 0, claim: 0}};
+  let box5 = 0, box6 = 0;
+  pays.forEach(x => {
+    const t = docTotals(x.doc), share = t.total ? x.amount / t.total : 0, v = by[x.doc.venture] || by.tlob;
+    box5 += +x.amount; if (x.doc.zeroRated) box6 += +x.amount;
+    v.sales += +x.amount; v.gst += t.gst * share;
+  });
+  let claim = 0;
+  exps.forEach(x => { claim += +x.gst || 0; (by[x.venture] || by.tlob).claim += +x.gst || 0; });
+  box5 = r2(box5); box6 = r2(box6);
+  const box7 = r2(box5 - box6), box8 = r2(box7 * 3 / 23), box9 = r2(num(adj.debit)), box10 = r2(box8 + box9);
+  const box11 = r2(claim * 23 / 3), box12 = r2(box11 * 3 / 23), box13 = r2(num(adj.credit)), box14 = r2(box12 + box13);
+  const box15 = r2(box10 - box14);
+  Object.values(by).forEach(v => { v.sales = r2(v.sales); v.gst = r2(v.gst); v.claim = r2(v.claim); });
+  const gifts = all('moves').filter(m => m.reason === 'gift' && inPeriod(m.date, p));
+  return {p, pays, exps, by, gifts, box5, box6, box7, box8, box9, box10, box11, box12, box13, box14, box15};
+}
+const isFiled = iso => !!S().filed[periodOf(iso).key];
+function confirmFiled(iso) {
+  if (!isFiled(iso)) return true;
+  return confirm('This date falls in ' + periodOf(iso).label + ', which you marked as filed with IRD. Changing it will make your records differ from the return you filed. Continue?');
+}
+
+/* ---------- CSV ---------- */
+function toCSV(rows) {
+  return rows.map(r => r.map(v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\n');
+}
+function download(name, text, type) {
+  const blob = new Blob([text], {type: type || 'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+/* ---------- toast, sheet, router ---------- */
+let toastTimer;
+function toast(msg) {
+  const root = $('#toastRoot'); root.innerHTML = '<div class="toast" role="status">' + esc(msg) + '</div>';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => root.innerHTML = '', 3200);
+}
+let sheetOpen = false, afterSheet = null, sheetMount = null;
+function openSheet(html, mount) {
+  const root = $('#sheetRoot');
+  root.innerHTML = '<div class="sheet-wrap" data-act="sheetBg"><div class="sheet" role="dialog" aria-modal="true">' + html + '</div></div>';
+  if (!sheetOpen) history.pushState({...(history.state || {}), sheet: 1}, '');
+  sheetOpen = true; sheetMount = mount || null;
+  if (mount) mount($('.sheet', root));
+  const f = $('.sheet [autofocus]', root); if (f) setTimeout(() => f.focus(), 50);
+}
+function refreshSheet(html) { const sh = $('#sheetRoot .sheet'); if (sh) { sh.innerHTML = html; if (sheetMount) sheetMount(sh); } }
+function closeSheet(then) { if (!sheetOpen) { if (then) then(); return; } afterSheet = then || null; history.back(); }
+function hideSheet() { $('#sheetRoot').innerHTML = ''; sheetOpen = false; sheetMount = null; }
+
+const state = {view: 'home', p: {}, draft: null};
+const VIEWS = {}, ACT = {};
+const isEditing = () => sheetOpen || state.view === 'edit';
+function go(view, p, mode) {
+  p = p || {};
+  if (mode === 'replace') history.replaceState({view, p}, ''); else history.pushState({view, p}, '');
+  state.view = view; state.p = p; render(); window.scrollTo(0, 0);
+}
+window.addEventListener('popstate', e => {
+  if (sheetOpen) { hideSheet(); const f = afterSheet; afterSheet = null; if (f) f(); return; }
+  const s = e.state || {view: 'home', p: {}};
+  if (state.view === 'edit' && state.draft && s.view !== 'edit') {
+    if (!confirm('Leave without saving this ' + (state.draft.mode === 'quote' ? 'quote' : 'sale') + '?')) { history.pushState({view: 'edit', p: state.p}, ''); return; }
+    state.draft = null;
+  }
+  state.view = s.view || 'home'; state.p = s.p || {}; render();
+});
+function theme(v) { document.body.className = v ? 'v-' + v : ''; }
+function render() {
+  const v = VIEWS[state.view] || VIEWS.home;
+  theme('');
+  const m = $('#main'); m.oninput = m.onchange = null;
+  m.innerHTML = v(state.p);
+  const navMap = {home: 'home', sales: 'sales', doc: 'sales', edit: 'sales', shipments: 'shipments', shipment: 'shipments',
+    customers: 'customers', customer: 'customers'};
+  const on = navMap[state.view] || 'more';
+  $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.view === on));
+  if (v.mount) v.mount(state.p);
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  if (el.dataset.act === 'sheetBg' && e.target !== el) return;
+  const fn = ACT[el.dataset.act];
+  if (fn) { e.preventDefault(); fn(el.dataset, el, e); }
+});
+ACT.sheetBg = () => closeSheet();
+ACT.closeSheet = () => closeSheet();
+ACT.nav = d => { if (state.view === 'edit' && state.draft && !confirm('Leave without saving?')) return; state.draft = null; go(d.view); };
+ACT.syncNow = () => sync(true);
+ACT.back = () => history.back();
+
+/* =========================================================
+   MX06 thermal printer (the "cat printer" family) over Web Bluetooth.
+   384 dots wide, about 48 mm of print on 57 mm paper.
+   ========================================================= */
+const CRC_TABLE = (() => { const t = new Uint8Array(256); for (let i = 0; i < 256; i++) { let c = i; for (let j = 0; j < 8; j++) c = c & 0x80 ? ((c << 1) ^ 0x07) & 0xFF : (c << 1) & 0xFF; t[i] = c; } return t; })();
+const crc8 = data => { let c = 0; for (const b of data) c = CRC_TABLE[(c ^ b) & 0xFF]; return c; };
+function pkt(cmd, data) {
+  const d = Uint8Array.from(data), p = new Uint8Array(8 + d.length);
+  p.set([0x51, 0x78, cmd, 0x00, d.length & 0xFF, (d.length >> 8) & 0xFF], 0);
+  p.set(d, 6); p[6 + d.length] = crc8(d); p[7 + d.length] = 0xFF;
+  return p;
+}
+const LATTICE_START = [0xAA, 0x55, 0x17, 0x38, 0x44, 0x5F, 0x5F, 0x5F, 0x44, 0x38, 0x2C];
+const LATTICE_END = [0xAA, 0x55, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17];
+const PRINTER_W = 384;
+
+const Printer = {
+  device: null, ch: null, paused: false, busy: false,
+  get connected() { return !!(this.ch && this.device && this.device.gatt.connected); },
+  async connect() {
+    if (!navigator.bluetooth) throw new Error('Bluetooth printing needs Chrome on Android, opened from the https web address.');
+    const svc = '0000ae30-0000-1000-8000-00805f9b34fb';
+    if (!this.device) {
+      this.device = await navigator.bluetooth.requestDevice({
+        filters: [{namePrefix: 'MX'}, {namePrefix: 'GB'}, {namePrefix: 'GT'}, {namePrefix: 'YT'}, {namePrefix: 'MXW'}, {services: [svc]}],
+        optionalServices: [svc]
+      });
+      this.device.addEventListener('gattserverdisconnected', () => { this.ch = null; updatePrinterStatus(); });
+    }
+    const server = await this.device.gatt.connect();
+    const service = await server.getPrimaryService(svc);
+    this.ch = await service.getCharacteristic('0000ae01-0000-1000-8000-00805f9b34fb');
+    try {
+      const n = await service.getCharacteristic('0000ae02-0000-1000-8000-00805f9b34fb');
+      await n.startNotifications();
+      n.addEventListener('characteristicvaluechanged', e => {
+        const b = new Uint8Array(e.target.value.buffer);
+        if (b[2] === 0xAE) this.paused = b[6] === 0x10; // printer asks us to wait while its buffer drains
+      });
+    } catch (e) { /* flow control not offered; we pace the data instead */ }
+    updatePrinterStatus();
+  },
+  disconnect() { if (this.device && this.device.gatt.connected) this.device.gatt.disconnect(); this.ch = null; this.device = null; updatePrinterStatus(); },
+  async write(bytes) {
+    let size = Math.max(20, +DEV.chunk || 180);
+    for (let i = 0; i < bytes.length;) {
+      let waited = 0;
+      while (this.paused && waited < 5000) { await sleep(40); waited += 40; }
+      const part = bytes.slice(i, i + size);
+      try {
+        if (this.ch.writeValueWithoutResponse) await this.ch.writeValueWithoutResponse(part);
+        else await this.ch.writeValue(part);
+      } catch (e) {
+        if (size > 20) { size = 20; DEV.chunk = 20; saveDev(); continue; } // fall back to small packets
+        throw e;
+      }
+      i += size;
+      await sleep(+DEV.delay || 20);
+    }
+  },
+  async printCanvas(cv, copies) {
+    if (!this.connected) await this.connect();
+    if (this.busy) throw new Error('The printer is still busy with the last job.');
+    this.busy = true;
+    try {
+      const rows = canvasRows(cv), energy = Math.max(2000, Math.min(60000, +DEV.energy || 12000));
+      const parts = [];
+      for (let c = 0; c < (copies || 1); c++) {
+        parts.push(pkt(0xA3, [0x00]), pkt(0xA4, [0x32]), pkt(0xBD, [0x20]),
+          pkt(0xAF, [energy & 0xFF, (energy >> 8) & 0xFF]), pkt(0xBE, [0x01]), pkt(0xA9, [0x00]), pkt(0xA6, LATTICE_START));
+        for (const row of rows) parts.push(pkt(0xA2, row));
+        parts.push(pkt(0xA6, LATTICE_END), pkt(0xBD, [0x08]), pkt(0xA1, [90, 0x00]), pkt(0xA3, [0x00]));
+      }
+      const total = parts.reduce((s, p) => s + p.length, 0), buf = new Uint8Array(total);
+      let o = 0; parts.forEach(p => { buf.set(p, o); o += p.length; });
+      await this.write(buf);
+    } finally { this.busy = false; }
+  }
+};
+function canvasRows(cv) {
+  const {data} = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height), rows = [];
+  for (let y = 0; y < cv.height; y++) {
+    const row = new Uint8Array(48);
+    for (let x = 0; x < PRINTER_W; x++) {
+      const i = (y * cv.width + x) * 4;
+      if (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2] < 140) row[x >> 3] |= 1 << (x & 7);
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+function updatePrinterStatus() {
+  const el = $('#printerStatus');
+  if (el) el.textContent = Printer.connected ? 'Connected to ' + (Printer.device.name || 'printer') : 'Not connected';
+}
+
+/* ---------- drawing slips for the thermal printer ---------- */
+function wrapText(ctx, text, maxW) {
+  const out = [];
+  String(text ?? '').split('\n').forEach(para => {
+    let line = '';
+    for (const w of para.split(/\s+/)) {
+      const t = line ? line + ' ' + w : w;
+      if (ctx.measureText(t).width <= maxW) { line = t; continue; }
+      if (line) out.push(line);
+      if (ctx.measureText(w).width > maxW) {
+        let part = '';
+        for (const ch of w) { if (ctx.measureText(part + ch).width > maxW) { out.push(part); part = ch; } else part += ch; }
+        line = part;
+      } else line = w;
+    }
+    out.push(line);
+  });
+  return out;
+}
+function slipCanvas(blocks) {
+  const W = PRINTER_W, P = 6, H = 6000, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.fillStyle = '#000'; x.textBaseline = 'top';
+  const font = (sz, b) => (b === false ? '400 ' : '700 ') + sz + 'px "Atkinson Hyperlegible", Arial, sans-serif';
+  let y = 4;
+  for (const b of blocks) {
+    if (y > H - 200) break;
+    if (b.gap) { y += b.gap; continue; }
+    if (b.rule) { x.fillRect(P, y + 6, W - 2 * P, 3); y += 18; continue; }
+    if (b.dash) { for (let i = P; i < W - P; i += 14) x.fillRect(i, y + 7, 8, 2); y += 18; continue; }
+    if (b.cut) { y += 18; for (let i = 0; i < W; i += 10) x.fillRect(i, y, 5, 2); y += 22; continue; }
+    const sz = b.size || 22, lh = Math.round(sz * (b.lh || 1.25));
+    x.font = font(sz, b.bold);
+    if (b.cols) {
+      const right = String(b.cols[1] ?? ''), rw = x.measureText(right).width;
+      const lines = wrapText(x, b.cols[0], W - 2 * P - rw - 14);
+      lines.forEach((ln, i) => { x.fillText(ln, P, y); if (i === 0) x.fillText(right, W - P - rw, y); y += lh; });
+      continue;
+    }
+    const lines = wrapText(x, b.text, W - 2 * P - (b.box ? 20 : 0));
+    const top = y;
+    if (b.box) y += 10;
+    for (const ln of lines) {
+      const w = x.measureText(ln).width;
+      const lx = b.align === 'center' ? (W - w) / 2 : b.align === 'right' ? W - P - w : P + (b.box ? 10 : 0);
+      x.fillText(ln, lx, y); y += lh;
+    }
+    if (b.box) { y += 6; x.lineWidth = 3; x.strokeRect(P + 1, top + 1, W - 2 * P - 2, y - top - 2); y += 8; }
+  }
+  y += 6;
+  const out = document.createElement('canvas'); out.width = W; out.height = Math.max(40, y);
+  out.getContext('2d').drawImage(c, 0, 0);
+  return out;
+}
+async function fontsReady() {
+  try { await Promise.race([document.fonts.load('700 22px "Atkinson Hyperlegible"'), sleep(1500)]); } catch (e) { /* use fallback font */ }
+}
+
+function receiptBlocks(d) {
+  const s = S(), v = s.ventures[d.venture], t = docTotals(d), pays = docPayments(d), paid = docPaid(d), bal = r2(t.total - paid);
+  const c = get('customers', d.customerId);
+  const b = [{text: v.name, size: 30, align: 'center', lh: 1.15}];
+  if (v.address) b.push({text: v.address, size: 18, align: 'center', bold: false});
+  if (v.phone || v.email) b.push({text: [v.phone, v.email].filter(Boolean).join('  '), size: 18, align: 'center', bold: false});
+  if (s.gstNumber && d.type !== 'quote') b.push({text: 'GST No. ' + s.gstNumber, size: 20, align: 'center'});
+  b.push({rule: 1}, {text: docTitle(d).toUpperCase(), size: 26, align: 'center'});
+  b.push({cols: [d.number || '', fmtDate(d.date)], size: 20});
+  if (c) b.push({text: 'To: ' + c.name, size: 22});
+  b.push({dash: 1});
+  (d.lines || []).forEach(l => {
+    b.push({text: l.desc || 'Item', size: 22});
+    if ((+l.qty || 0) !== 1) b.push({cols: ['  ' + (+l.qty) + ' x ' + money(l.unit), money(lineAmt(l))], size: 20, bold: false});
+    else b.push({cols: ['', money(lineAmt(l))], size: 20, bold: false});
+  });
+  b.push({rule: 1});
+  if (d.excl) { b.push({cols: ['Subtotal', money(t.net)], size: 20, bold: false}, {cols: ['GST 15%', money(t.gst)], size: 20, bold: false}); }
+  b.push({cols: ['TOTAL', money(t.total)], size: 28});
+  if (!d.excl && !d.zeroRated) b.push({cols: ['Includes GST', money(t.gst)], size: 20, bold: false});
+  if (d.zeroRated) b.push({text: 'Zero-rated export, no GST', size: 20, bold: false});
+  if (d.type === 'invoice') {
+    pays.forEach(p => b.push({cols: ['Paid ' + fmtDate(p.date) + ' ' + (p.method || ''), money(p.amount)], size: 20, bold: false}));
+    if (bal > 0.005) {
+      b.push({cols: ['BALANCE DUE', money(bal)], size: 24});
+      if (d.due) b.push({text: 'Due ' + fmtDate(d.due), size: 20, bold: false});
+      if (s.bankAccount) b.push({gap: 4}, {text: 'Bank: ' + s.bankAccount + (s.bankName ? ' (' + s.bankName + ')' : ''), size: 20}, {text: 'Reference: ' + d.number, size: 20});
+    } else b.push({text: 'PAID IN FULL. THANK YOU.', size: 22, align: 'center'});
+  } else if (d.validUntil) b.push({text: 'Valid until ' + fmtDate(d.validUntil), size: 20, bold: false});
+  if (d.notes) b.push({gap: 4}, {text: d.notes, size: 19, bold: false});
+  b.push({gap: 8}, {text: v.footer || '', size: 20, align: 'center', bold: false}, {gap: 10});
+  return b;
+}
+function labelBlocks(o) {
+  const b = [{text: o.name || '', size: 46, align: 'center', lh: 1.1}, {gap: 2}, {rule: 1}];
+  (o.lines || []).filter(Boolean).forEach(l => b.push({text: l, size: 24, align: 'center'}));
+  if (o.note) b.push({gap: 6}, {text: o.note, size: 24, box: 1});
+  b.push({gap: 6}, {text: o.from || '', size: 18, align: 'center', bold: false}, {gap: 6});
+  return b;
+}
+function docLabel(d) {
+  const c = get('customers', d.customerId);
+  return {
+    name: c ? c.name : (d.customerName || ''),
+    lines: (d.lines || []).filter(l => l.kind === 'item' || l.kind === 'custom').map(l => ((+l.qty || 1) > 1 ? l.qty + ' x ' : '') + l.desc),
+    note: d.delivery || (c && c.delivery) || '',
+    from: vName(d.venture) + (d.number ? '  ' + d.number : '')
+  };
+}
+
+/* ---------- print preview sheet ---------- */
+async function printPreview(title, blocks, opts) {
+  await fontsReady();
+  const cv = slipCanvas(blocks);
+  const img = cv.toDataURL('image/png');
+  openSheet(`<h2>${esc(title)}</h2>
+    <p class="sub">This is what the printer will produce, at actual print width.</p>
+    <div class="slip"><img src="${img}" alt="Print preview"></div>
+    <label class="f"><span>Copies</span><div class="stepper">
+      <button class="btn small" data-act="copies" data-d="-1" aria-label="One fewer">−</button>
+      <input id="copies" type="number" min="1" max="20" value="${(opts && opts.copies) || 1}" inputmode="numeric">
+      <button class="btn small" data-act="copies" data-d="1" aria-label="One more">+</button></div></label>
+    <div class="actions"><button class="btn primary wide" data-act="doPrint">${Printer.connected ? 'Print' : 'Connect printer and print'}</button>
+    <button class="btn wide" data-act="closeSheet">Close</button></div>
+    <p class="hint">Printer: <span id="printerStatus">${Printer.connected ? 'Connected' : 'Not connected'}</span>. Turn the MX06 on and keep it near the phone.</p>`);
+  ACT.doPrint = async (_, el) => {
+    el.disabled = true; el.textContent = 'Printing…';
+    try { await Printer.printCanvas(cv, Math.max(1, Math.min(20, num($('#copies').value)))); toast('Printed'); closeSheet(); }
+    catch (e) { el.disabled = false; el.textContent = 'Try again'; toast(e.name === 'NotFoundError' ? 'No printer chosen.' : 'Printing failed: ' + e.message); }
+  };
+}
+ACT.copies = d => { const i = $('#copies'); i.value = Math.max(1, Math.min(20, num(i.value) + num(d.d))); };
+
+/* ---------- A4 / PDF documents (for email and the browser's print dialog) ---------- */
+function docInner(d) {
+  const s = S(), v = s.ventures[d.venture], t = docTotals(d), pays = d.type === 'invoice' ? docPayments(d) : [], paid = sum(pays, p => p.amount), bal = r2(t.total - paid);
+  const c = get('customers', d.customerId), col = d.venture === 'bfs' ? '#3D6A3E' : '#7B2232';
+  const td = 'padding:8px 6px;border-bottom:1px solid #ddd;vertical-align:top;';
+  const rows = (d.lines || []).map(l => `<tr><td style="${td}">${esc(l.desc)}</td><td style="${td}text-align:right">${+l.qty}</td><td style="${td}text-align:right">${money(l.unit)}</td><td style="${td}text-align:right">${money(lineAmt(l))}</td></tr>`).join('');
+  const kv = (k, val, strong) => `<tr><td style="padding:4px 6px;text-align:right;${strong ? 'font-weight:bold;font-size:16px;border-top:2px solid #222;' : ''}">${k}</td><td style="padding:4px 6px;text-align:right;width:120px;${strong ? 'font-weight:bold;font-size:16px;border-top:2px solid #222;' : ''}">${val}</td></tr>`;
+  let totals = '';
+  if (d.excl) totals += kv('Subtotal (excl. GST)', money(t.net)) + kv('GST 15%', money(t.gst));
+  totals += kv('Total' + (d.excl || d.zeroRated ? '' : ' (incl. GST)'), money(t.total), true);
+  if (!d.excl && !d.zeroRated) totals += kv('Includes GST of', money(t.gst));
+  if (d.zeroRated) totals += kv('Zero-rated export', 'No GST');
+  pays.forEach(p => totals += kv('Paid ' + fmtDate(p.date) + (p.method ? ' (' + esc(p.method) + ')' : ''), '−' + money(p.amount)));
+  if (d.type === 'invoice' && pays.length) totals += kv('Balance due', money(Math.max(0, bal)), true);
+  const metaRows = [
+    [d.type === 'quote' ? 'Quote no.' : 'Invoice no.', d.number],
+    ['Date', fmtDate(d.date)],
+    d.type === 'invoice' && bal > 0.005 && d.due ? ['Due', fmtDate(d.due)] : null,
+    d.type === 'quote' && d.validUntil ? ['Valid until', fmtDate(d.validUntil)] : null,
+    d.type !== 'quote' && s.gstNumber ? ['GST no.', s.gstNumber] : null
+  ].filter(Boolean).map(r => `<tr><td style="padding:2px 10px 2px 0;color:#555">${r[0]}</td><td style="padding:2px 0;font-weight:bold">${esc(r[1])}</td></tr>`).join('');
+  return `<div style="font-family:Arial,Helvetica,sans-serif;color:#222;font-size:13px;line-height:1.45;max-width:720px;margin:0 auto">
+  <table style="width:100%;border-collapse:collapse"><tr>
+    <td style="vertical-align:top"><div style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:${col}">${esc(v.name)}</div>
+      <div style="color:#555">${esc(v.address).replace(/\n/g, '<br>')}${v.address ? '<br>' : ''}${esc([v.phone, v.email].filter(Boolean).join('  |  '))}</div></td>
+    <td style="vertical-align:top;text-align:right"><div style="font-size:20px;font-weight:bold">${docTitle(d)}</div>
+      <table style="margin-left:auto;border-collapse:collapse;font-size:13px">${metaRows}</table></td></tr></table>
+  <div style="margin:18px 0 10px;padding:10px 12px;background:#f4f4f4;border-left:4px solid ${col}">
+    <div style="color:#555;font-size:12px">${d.type === 'quote' ? 'Prepared for' : 'Bill to'}</div>
+    <div style="font-weight:bold">${esc(c ? c.name : (d.customerName || 'Customer'))}</div>
+    ${c ? `<div style="color:#555">${esc([c.address, c.email, c.phone].filter(Boolean).join('  |  '))}</div>` : ''}</div>
+  <table style="width:100%;border-collapse:collapse;margin-top:6px">
+    <tr style="background:${col};color:#fff"><th style="padding:8px 6px;text-align:left">Description</th><th style="padding:8px 6px;text-align:right">Qty</th><th style="padding:8px 6px;text-align:right">Price${d.excl ? ' (excl. GST)' : ''}</th><th style="padding:8px 6px;text-align:right">Amount</th></tr>
+    ${rows}</table>
+  <table style="margin:10px 0 0 auto;border-collapse:collapse">${totals}</table>
+  ${d.notes ? `<p style="margin-top:18px">${esc(d.notes).replace(/\n/g, '<br>')}</p>` : ''}
+  ${d.type === 'invoice' && bal > 0.005 && s.bankAccount ? `<div style="margin-top:18px;padding:10px 12px;border:1px solid #ccc"><b>How to pay</b><br>Bank transfer to ${esc(s.bankAccount)}${s.bankName ? ' (' + esc(s.bankName) + ')' : ''}${s.ownerName ? ', account name ' + esc(s.ownerName) : ''}.<br>Please use <b>${esc(d.number)}</b> as the reference.</div>` : ''}
+  <p style="margin-top:22px;color:#555;text-align:center">${esc(v.footer)}</p></div>`;
+}
+function statementInner(c, venture) {
+  const s = S(), v = s.ventures[venture], col = venture === 'bfs' ? '#3D6A3E' : '#7B2232';
+  const docs = all('docs').filter(d => d.customerId === c.id && d.venture === venture && d.type === 'invoice' && !d.void && docBalance(d) > 0.005)
+    .sort((a, b) => a.date < b.date ? -1 : 1);
+  const td = 'padding:7px 6px;border-bottom:1px solid #ddd;';
+  const rows = docs.map(d => `<tr><td style="${td}">${fmtDate(d.date)}</td><td style="${td}">${esc(d.number)}</td><td style="${td}">${d.due ? fmtDate(d.due) : ''}</td><td style="${td}text-align:right">${money(docTotals(d).total)}</td><td style="${td}text-align:right">${money(docPaid(d))}</td><td style="${td}text-align:right;font-weight:bold">${money(docBalance(d))}</td></tr>`).join('');
+  const owing = sum(docs, docBalance);
+  return `<div style="font-family:Arial,Helvetica,sans-serif;color:#222;font-size:13px;max-width:720px;margin:0 auto">
+   <div style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:${col}">${esc(v.name)}</div>
+   <div style="color:#555">${esc([v.phone, v.email].filter(Boolean).join('  |  '))}</div>
+   <h2 style="margin:18px 0 4px">Statement</h2><div>For <b>${esc(c.name)}</b>, as at ${fmtDate(today())}</div>
+   <table style="width:100%;border-collapse:collapse;margin-top:14px"><tr style="background:${col};color:#fff">
+   <th style="padding:7px 6px;text-align:left">Date</th><th style="padding:7px 6px;text-align:left">Invoice</th><th style="padding:7px 6px;text-align:left">Due</th><th style="padding:7px 6px;text-align:right">Total</th><th style="padding:7px 6px;text-align:right">Paid</th><th style="padding:7px 6px;text-align:right">Owing</th></tr>
+   ${rows || '<tr><td colspan="6" style="padding:10px">Nothing is owing. Thank you.</td></tr>'}</table>
+   <p style="text-align:right;font-size:16px;margin-top:10px"><b>Total owing: ${money(owing)}</b></p>
+   ${owing > 0 && s.bankAccount ? `<p>Please pay by bank transfer to ${esc(s.bankAccount)}, using the invoice number as the reference.</p>` : ''}</div>`;
+}
+const wrapHTML = (title, inner) => `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:A4;margin:16mm}body{margin:0;padding:12px}</style></head><body>${inner}</body></html>`;
+function openPrintable(title, inner) {
+  const w = window.open('', '_blank');
+  if (!w) { toast('Allow pop-ups for this site to open the printable page.'); return; }
+  w.document.write(wrapHTML(title, inner) .replace('</body>', '<script>setTimeout(function(){window.print()},400)<\/script></body>'));
+  w.document.close();
+}
+
+/* =========================================================
+   Views
+   ========================================================= */
+const statusChip = d => { const s = docStatus(d); return `<span class="chip ${s.k}">${s.t}</span>`; };
+const ventureChip = v => `<span class="chip ${v}">${vShort(v)}</span>`;
+function docRow(d) {
+  const t = docTotals(d), bal = docBalance(d);
+  return `<button class="row" data-act="openDoc" data-id="${d.id}"><span class="bar ${d.venture}"></span>
+    <span class="main"><span class="t">${esc(custName(d.customerId, d.customerName))}</span>
+    <span class="s">${esc(d.number)}, ${fmtDate(d.date)} ${statusChip(d)}</span></span>
+    <span class="amt">${money(t.total)}${bal > 0.005 && bal < t.total ? `<small>${money(bal)} owing</small>` : ''}</span></button>`;
+}
+ACT.openDoc = d => closeSheet(() => go('doc', {id: d.id}));
+ACT.go = d => closeSheet(() => go(d.view, d.id ? {id: d.id} : {}));
+
+/* ---------- HOME ---------- */
+VIEWS.home = () => {
+  const s = S(), cur = periodOf(today()), rep = gstReport(cur), prev = prevPeriod(cur);
+  const owed = all('docs').filter(d => d.type === 'invoice' && !d.void && docBalance(d) > 0.005).sort((a, b) => (a.due || a.date) < (b.due || b.date) ? -1 : 1);
+  const ships = all('shipments').filter(x => x.status !== 'closed');
+  const notes = [];
+  if (!s.gstNumber) notes.push(`<div class="card note"><p><b>Add your business details.</b> Your GST number, bank account and contact details need to be set before receipts and invoices go out.</p><button class="btn small" data-act="go" data-view="settings">Open settings</button></div>`);
+  if (!DEV.syncUrl) notes.push(`<div class="card note info"><p>Records are saved on this device only. Connect your Google Sheet so the phone and tablet share the same records and you can email from Gmail.</p><button class="btn small" data-act="go" data-view="settings">Connect Google Sheet</button></div>`);
+  if (prev.start >= periodOf(s.startDate).start && !s.filed[prev.key] && today() <= addDays(prev.due, 30))
+    notes.push(`<div class="card note"><p><b>GST return for ${prev.label}</b> is due ${fmtDate(prev.due)}.</p><button class="btn small" data-act="openGst" data-key="${prev.key}">Open return</button></div>`);
+  return `
+  ${notes.join('')}
+  <div class="actions">
+    <button class="btn primary" data-act="newDoc" data-mode="sale">New sale</button>
+    <button class="btn" data-act="newDoc" data-mode="invoice">New invoice</button>
+    <button class="btn" data-act="newDoc" data-mode="quote">New quote</button>
+    <button class="btn" data-act="quickLabel">Print a label</button>
+    <button class="btn" data-act="editExpense">Add expense</button>
+    <button class="btn" data-act="go" data-view="shipments">Shipments</button>
+  </div>
+  <div class="section-title"><h3>GST, ${cur.label}</h3><button class="linkish" data-act="openGst" data-key="${cur.key}">Full return</button></div>
+  <div class="card">
+    <div class="kv"><span>GST on money received</span><b>${money(rep.box10)}</b></div>
+    <div class="kv"><span>GST you can claim back</span><b>${money(rep.box14)}</b></div>
+    <div class="kv total"><span>${rep.box15 >= 0 ? 'To pay so far' : 'Refund so far'}</span><b>${money(Math.abs(rep.box15))}</b></div>
+    <p class="hint">Return due ${fmtDate(cur.due)}. Cash basis: counts payments received and expenses paid in this period.</p>
+  </div>
+  <div class="section-title"><h3>Owed to you${owed.length ? ', ' + money(sum(owed, docBalance)) : ''}</h3>${owed.length > 5 ? '<button class="linkish" data-act="salesFilter" data-f="open">See all</button>' : ''}</div>
+  ${owed.length ? `<div class="list">${owed.slice(0, 5).map(docRow).join('')}</div>` : '<div class="card empty">Nobody owes you anything right now.</div>'}
+  ${ships.length ? `<h3>Shipments under way</h3><div class="list">${ships.map(shipRow).join('')}</div>` : ''}`;
+};
+ACT.openGst = d => go('gst', {key: d.key});
+ACT.salesFilter = d => go('sales', {f: d.f});
+
+/* ---------- SALES LIST ---------- */
+let salesQ = '';
+VIEWS.sales = p => {
+  const f = p.f || 'all', v = p.v || 'all';
+  return `<h2>Sales</h2><p class="sub">Invoices, receipts and quotes for both ventures.</p>
+  <div class="actions"><button class="btn primary" data-act="newDoc" data-mode="sale">New sale</button>
+  <button class="btn" data-act="newDoc" data-mode="invoice">New invoice</button><button class="btn" data-act="newDoc" data-mode="quote">New quote</button></div>
+  <div class="seg">${[['all', 'All'], ['open', 'Owing'], ['quotes', 'Quotes'], ['paid', 'Paid']].map(([k, t]) => `<button class="${f === k ? 'on' : ''}" data-act="setSales" data-k="f" data-val="${k}">${t}</button>`).join('')}</div>
+  <div class="seg venture">${[['all', 'Both'], ['tlob', 'tLOB'], ['bfs', 'Blaise']].map(([k, t]) => `<button data-v="${k}" class="${v === k ? 'on' : ''}" data-act="setSales" data-k="v" data-val="${k}">${t}</button>`).join('')}</div>
+  <input class="search" id="salesSearch" type="search" placeholder="Search name, number or item" value="${esc(salesQ)}">
+  <div id="salesList"></div>`;
+};
+VIEWS.sales.mount = p => {
+  const draw = () => {
+    const f = p.f || 'all', v = p.v || 'all', q = salesQ.trim().toLowerCase();
+    let docs = all('docs').filter(d => (v === 'all' || d.venture === v));
+    if (f === 'open') docs = docs.filter(d => docBalance(d) > 0.005);
+    if (f === 'quotes') docs = docs.filter(d => d.type === 'quote');
+    if (f === 'paid') docs = docs.filter(d => d.type === 'invoice' && !d.void && docBalance(d) <= 0.005);
+    if (q) docs = docs.filter(d => [d.number, custName(d.customerId, d.customerName), ...(d.lines || []).map(l => l.desc)].join(' ').toLowerCase().includes(q));
+    docs.sort((a, b) => (b.date + b.createdAt) > (a.date + a.createdAt) ? 1 : -1);
+    $('#salesList').innerHTML = docs.length ? `<div class="list">${docs.slice(0, 200).map(docRow).join('')}</div>` : '<div class="card empty">No sales match. Tap New sale to record one.</div>';
+  };
+  $('#salesSearch').addEventListener('input', e => { salesQ = e.target.value; draw(); });
+  draw();
+};
+ACT.setSales = d => { const p = {...state.p, [d.k]: d.val}; go('sales', p, 'replace'); };
+
+/* ---------- DOCUMENT VIEW ---------- */
+VIEWS.doc = p => {
+  const d = get('docs', p.id);
+  if (!d) return '<div class="card empty">This record was deleted.</div>';
+  theme(d.venture);
+  const t = docTotals(d), pays = d.type === 'invoice' ? docPayments(d) : [], bal = docBalance(d), c = get('customers', d.customerId);
+  const lines = (d.lines || []).map(l => `<tr><td>${esc(l.desc)}${(+l.qty !== 1) ? `<div class="muted">${+l.qty} × ${money(l.unit)}</div>` : ''}</td><td class="r">${money(lineAmt(l))}</td></tr>`).join('');
+  const fresh = p.fresh ? `<div class="card note info"><p><b>${d.type === 'quote' ? 'Quote saved.' : bal <= 0.005 ? 'Sale saved and marked paid.' : 'Invoice saved.'}</b> What next?</p></div>` : '';
+  return `${fresh}
+  <div class="doc-head"><div><h2>${esc(d.number)}</h2><p class="sub">${docTitle(d)}, ${esc(vName(d.venture))}</p></div><div>${statusChip(d)}</div></div>
+  <div class="card">
+    ${c ? `<button class="row" style="padding:0 0 10px;min-height:0" data-act="go" data-view="customer" data-id="${c.id}"><span class="main"><span class="t">${esc(c.name)}</span><span class="s">${esc([c.phone, c.email].filter(Boolean).join(', ') || 'No contact details')}</span></span></button>` : `<p><b>${esc(d.customerName || 'Walk-in customer')}</b></p>`}
+    <div class="kv"><span>Date</span><b>${fmtDate(d.date)}</b></div>
+    ${d.type === 'invoice' && bal > 0.005 && d.due ? `<div class="kv"><span>Due</span><b>${fmtDate(d.due)}</b></div>` : ''}
+    ${d.type === 'quote' && d.validUntil ? `<div class="kv"><span>Valid until</span><b>${fmtDate(d.validUntil)}</b></div>` : ''}
+    ${d.delivery ? `<div class="kv"><span>Delivery</span><b>${esc(d.delivery)}</b></div>` : ''}
+  </div>
+  <div class="card"><table class="doc-lines">${lines}</table>
+    ${d.excl ? `<div class="kv"><span>Subtotal excl. GST</span><b>${money(t.net)}</b></div><div class="kv"><span>GST 15%</span><b>${money(t.gst)}</b></div>` : ''}
+    <div class="kv total"><span>Total</span><b>${money(t.total)}</b></div>
+    ${!d.excl && !d.zeroRated ? `<div class="kv"><span class="muted">Includes GST</span><span class="muted money">${money(t.gst)}</span></div>` : ''}
+    ${d.zeroRated ? '<div class="kv"><span class="muted">Zero-rated export</span><span class="muted">No GST</span></div>' : ''}
+    ${pays.map(x => `<div class="kv"><button class="linkish" data-act="editPayment" data-id="${x.id}">Paid ${fmtDate(x.date)}${x.method ? ', ' + esc(x.method) : ''}</button><b>−${money(x.amount)}</b></div>`).join('')}
+    ${d.type === 'invoice' && pays.length && bal > 0.005 ? `<div class="kv total"><span>Balance due</span><b>${money(bal)}</b></div>` : ''}
+    ${d.notes ? `<p class="hint" style="margin-top:10px">${esc(d.notes)}</p>` : ''}
+  </div>
+  <div class="actions">
+    ${d.type === 'invoice' && bal > 0.005 && !d.void ? `<button class="btn primary wide" data-act="addPayment" data-id="${d.id}">Record payment</button>` : ''}
+    ${d.type === 'quote' && d.status !== 'accepted' ? `<button class="btn primary wide" data-act="quoteToInvoice" data-id="${d.id}">Turn into invoice</button>` : ''}
+    <button class="btn" data-act="printReceipt" data-id="${d.id}">${d.type === 'quote' ? 'Print quote slip' : bal <= 0.005 ? 'Print receipt' : 'Print invoice slip'}</button>
+    <button class="btn" data-act="printDocLabel" data-id="${d.id}">Print label</button>
+    <button class="btn" data-act="emailDoc" data-id="${d.id}">Email</button>
+    <button class="btn" data-act="a4Doc" data-id="${d.id}">Print or save PDF</button>
+    <button class="btn" data-act="editDoc" data-id="${d.id}">Edit</button>
+    <button class="btn danger" data-act="voidDoc" data-id="${d.id}">${pays.length ? 'Void' : 'Delete'}</button>
+  </div>
+  ${d.emailedAt ? `<p class="hint">Emailed ${fmtDate(isoOf(new Date(d.emailedAt)))} to ${esc(d.emailedTo || '')}.</p>` : ''}`;
+};
+ACT.printReceipt = d => printPreview('Receipt slip', receiptBlocks(get('docs', d.id)));
+ACT.printDocLabel = d => printPreview('Delivery label', labelBlocks(docLabel(get('docs', d.id))));
+ACT.a4Doc = d => { const doc = get('docs', d.id); openPrintable(doc.number, docInner(doc)); };
+ACT.editDoc = d => { const doc = get('docs', d.id); state.draft = {...JSON.parse(JSON.stringify(doc)), mode: doc.type}; go('edit', {id: doc.id}); };
+ACT.voidDoc = d => {
+  const doc = get('docs', d.id), pays = docPayments(doc);
+  if (pays.length) {
+    if (pays.some(p => isFiled(p.date))) return toast('A payment on this invoice is in a filed GST period. Record a credit instead: edit the invoice and add a negative line.');
+    if (!confirm('Void ' + doc.number + '? Its ' + pays.length + ' payment(s) will be removed too, and any stock returned.')) return;
+    pays.forEach(p => remove('payments', p.id));
+    const nd = put('docs', {...doc, void: true}); syncDocMoves(nd); toast(doc.number + ' voided'); render();
+  } else {
+    if (!confirm('Delete ' + doc.number + '?')) return;
+    const nd = {...doc, deleted: true}; put('docs', nd); syncDocMoves(nd);
+    all('preorders').filter(x => x.docId === doc.id).forEach(x => put('preorders', {...x, docId: ''}));
+    toast(doc.number + ' deleted'); history.back();
+  }
+};
+ACT.quoteToInvoice = d => {
+  const q = get('docs', d.id), s = S();
+  state.draft = {...newDraft('invoice', {venture: q.venture, customerId: q.customerId}), lines: JSON.parse(JSON.stringify(q.lines)), excl: q.excl, notes: q.notes || '', fromQuote: q.id, delivery: q.delivery || ''};
+  state.draft.due = addDays(today(), s.terms);
+  go('edit', {});
+};
+
+/* payments */
+function paymentSheet(doc, pay) {
+  const bal = docBalance(doc) + (pay ? +pay.amount : 0);
+  openSheet(`<h2>${pay ? 'Edit payment' : 'Record payment'}</h2><p class="sub">${esc(doc.number)}, ${money(bal)} owing</p>
+    <label class="f"><span>Amount received</span><input id="payAmt" inputmode="decimal" value="${pay ? pay.amount : r2(bal)}" autofocus></label>
+    <label class="f"><span>Date received</span><input id="payDate" type="date" value="${pay ? pay.date : today()}"></label>
+    <label class="f"><span>Method</span><select id="payMethod">${['Cash', 'Bank transfer', 'Card', 'Other'].map(m => `<option ${pay && pay.method === m ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
+    <div class="actions"><button class="btn primary wide" data-act="savePayment">Save payment</button>
+    ${pay ? '<button class="btn danger" data-act="deletePayment">Delete payment</button>' : ''}<button class="btn" data-act="closeSheet">Cancel</button></div>`);
+  ACT.savePayment = () => {
+    const amount = r2(num($('#payAmt').value)), date = $('#payDate').value || today();
+    if (amount <= 0) return toast('Enter the amount received.');
+    if (pay && !confirmFiled(pay.date)) return;
+    if (!confirmFiled(date)) return;
+    if (amount > bal + 0.005 && !confirm('That is more than the ' + money(bal) + ' owing. Save anyway?')) return;
+    put('payments', {...(pay || {}), docId: doc.id, amount, date, method: $('#payMethod').value});
+    closeSheet(() => { toast('Payment saved'); render(); });
+  };
+  ACT.deletePayment = () => {
+    if (!confirmFiled(pay.date) || !confirm('Delete this payment?')) return;
+    remove('payments', pay.id); closeSheet(() => { toast('Payment deleted'); render(); });
+  };
+}
+ACT.addPayment = d => paymentSheet(get('docs', d.id));
+ACT.editPayment = d => { const p = get('payments', d.id); paymentSheet(get('docs', p.docId), p); };
+
+/* email */
+function emailSheet(o) {
+  openSheet(`<h2>${esc(o.heading)}</h2>
+    <label class="f"><span>To</span><input id="emTo" type="email" value="${esc(o.to || '')}" placeholder="name@example.com"></label>
+    <label class="f"><span>Subject</span><input id="emSubj" value="${esc(o.subject)}"></label>
+    <label class="f"><span>Message</span><textarea id="emMsg" rows="6">${esc(o.message)}</textarea></label>
+    <label class="check"><input type="checkbox" id="emPdf" checked><span>Attach a PDF copy</span></label>
+    ${DEV.syncUrl ? '' : '<p class="hint">Without the Google Sheet connected, this opens your mail app with a text summary and no PDF.</p>'}
+    <div class="actions"><button class="btn primary wide" data-act="sendEmail">Send email</button><button class="btn wide" data-act="closeSheet">Cancel</button></div>`);
+  ACT.sendEmail = async (_, el) => {
+    const to = $('#emTo').value.trim(), subject = $('#emSubj').value.trim(), msg = $('#emMsg').value;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast('Enter a valid email address.');
+    if (!DEV.syncUrl) { location.href = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(msg + '\n\n' + (o.text || '')); return; }
+    el.disabled = true; el.textContent = 'Sending…';
+    try {
+      const html = `<div style="font-family:Arial,sans-serif;font-size:14px">${esc(msg).replace(/\n/g, '<br>')}</div><hr style="margin:18px 0;border:0;border-top:1px solid #ddd">${o.inner}`;
+      await api('email', {to, subject, html, text: msg, pdfHtml: $('#emPdf').checked ? wrapHTML(o.filename, o.inner) : '', filename: o.filename + '.pdf', fromName: o.fromName, replyTo: o.replyTo || ''});
+      if (o.onSent) o.onSent(to);
+      closeSheet(() => { toast('Email sent to ' + to); render(); });
+    } catch (e) { el.disabled = false; el.textContent = 'Try again'; toast('Email not sent: ' + e.message); }
+  };
+}
+ACT.emailDoc = d => {
+  const doc = get('docs', d.id), c = get('customers', doc.customerId), v = S().ventures[doc.venture], t = docTotals(doc), bal = docBalance(doc);
+  const first = c ? c.name.split(' ')[0] : '';
+  const kind = doc.type === 'quote' ? 'quote' : bal <= 0.005 ? 'receipt' : 'invoice';
+  const message = `Kia ora${first ? ' ' + first : ''},\n\n` + (kind === 'quote' ? `Please find our quote ${doc.number} for ${money(t.total)} attached. It is valid until ${fmtDate(doc.validUntil)}.`
+    : kind === 'receipt' ? `Thank you for your payment. Your receipt ${doc.number} for ${money(t.total)} is attached.`
+    : `Please find invoice ${doc.number} for ${money(t.total)} attached${doc.due ? ', due ' + fmtDate(doc.due) : ''}.` + (S().bankAccount ? `\n\nYou can pay by bank transfer to ${S().bankAccount} using ${doc.number} as the reference.` : ''))
+    + `\n\nNgā mihi,\n${S().ownerName || v.name}\n${v.name}`;
+  emailSheet({heading: 'Email ' + kind, to: c ? c.email : '', subject: `${v.name}: ${kind} ${doc.number}`, message, inner: docInner(doc), filename: doc.number,
+    fromName: v.name, replyTo: v.email, text: `${docTitle(doc)} ${doc.number}\nTotal ${money(t.total)}` + (bal > 0.005 ? `\nOwing ${money(bal)}` : ''),
+    onSent: to => put('docs', {...get('docs', doc.id), emailedAt: Date.now(), emailedTo: to})});
+};
+
+/* ---------- EDITOR (sale / invoice / quote) ---------- */
+function newDraft(mode, o) {
+  o = o || {}; const s = S(), venture = o.venture || DEV.lastVenture || 'tlob';
+  return {id: null, mode, type: mode === 'quote' ? 'quote' : 'invoice', venture, date: today(), due: addDays(today(), s.terms),
+    validUntil: addDays(today(), s.quoteDays), customerId: o.customerId || '', customerName: '', lines: o.lines || [],
+    excl: !!s.ventures[venture].excl, zeroRated: false, notes: '', delivery: o.delivery || '', shipmentId: o.shipmentId || '',
+    preorderId: o.preorderId || '', payMethod: 'Cash'};
+}
+ACT.newDoc = d => { state.draft = newDraft(d.mode, {customerId: d.cust || ''}); closeSheet(() => go('edit', {})); };
+const KIND = {item: 'Stock item', labour: 'Labour', material: 'Materials', travel: 'Travel', custom: 'Custom line'};
+function lineHTML(l, i, excl) {
+  const tax = excl ? ' (excl. GST)' : ' (incl. GST)';
+  const qtyLbl = l.kind === 'labour' ? 'Hours' : l.kind === 'travel' ? 'Km' : 'Qty';
+  const unitLbl = l.kind === 'labour' ? 'Rate per hour' : l.kind === 'travel' ? 'Rate per km' : 'Price each';
+  const inp = (k, val, lbl, ro) => `<label class="f sm"><span>${lbl}</span><input data-dl="${i}" data-k="${k}" inputmode="decimal" value="${esc(val)}" ${ro ? 'readonly tabindex="-1" id="lu' + i + '"' : ''}></label>`;
+  return `<div class="line-card"><div class="line-head"><span class="chip">${KIND[l.kind] || 'Line'}</span>
+    <button class="icon-btn" data-act="delLine" data-i="${i}" aria-label="Remove this line">✕</button></div>
+    <label class="f"><input data-dl="${i}" data-k="desc" value="${esc(l.desc)}" placeholder="Description, as the customer will see it"></label>
+    ${l.kind === 'material' ? `<div class="grid3" style="margin-bottom:8px">${inp('cost', l.cost, 'Cost each' + tax)}${inp('markup', l.markup, 'Markup %')}${inp('unit', l.unit, 'Sell each', true)}</div>` : ''}
+    <div class="grid3">${inp('qty', l.qty, qtyLbl)}${l.kind === 'material' ? '<span></span>' : inp('unit', l.unit, unitLbl)}
+      <div class="lt"><span>Amount</span><b id="la${i}">${money(lineAmt(l))}</b></div></div></div>`;
+}
+function totalsHTML(dr) {
+  const t = docTotals(dr);
+  return `${dr.excl ? `<div class="kv"><span>Subtotal excl. GST</span><b>${money(t.net)}</b></div><div class="kv"><span>GST 15%</span><b>${money(t.gst)}</b></div>` : ''}
+  <div class="kv total"><span>Total</span><b>${money(t.total)}</b></div>
+  ${!dr.excl && !dr.zeroRated ? `<div class="kv"><span class="muted">Includes GST</span><span class="muted money">${money(t.gst)}</span></div>` : ''}
+  ${dr.type === 'invoice' && !dr.customerId && t.total > 200 ? '<p class="hint">For sales over $200, IRD needs the buyer’s name on the tax invoice. Add a customer.</p>' : ''}`;
+}
+function custPickHTML(selId, walkin, act) {
+  const c = get('customers', selId);
+  if (c || walkin) return `<div class="row" style="padding:4px 0;min-height:0"><span class="main"><span class="t">${esc(c ? c.name : 'Walk-in customer')}</span>
+    <span class="s">${c ? esc([c.phone, c.email].filter(Boolean).join(', ') || 'No contact details') : 'No name on the receipt'}</span></span>
+    <button class="btn small" data-act="${act}Clear">Change</button></div>`;
+  return `<input id="custSearch" type="search" placeholder="Search by name, phone or email" autocomplete="off">
+    <div id="custRes" class="pickres"></div>
+    <div class="pill-row" style="margin:10px 0 0"><button class="btn" data-act="${act}New">Add new customer</button>${act === 'ed' ? '<button class="btn" data-act="edWalkin">No name (walk-in)</button>' : ''}</div>`;
+}
+function custSearchResults(q, act) {
+  q = q.trim().toLowerCase();
+  if (!q) return '';
+  const res = all('customers').filter(c => [c.name, c.phone, c.email].join(' ').toLowerCase().includes(q)).slice(0, 8);
+  return res.length ? `<div class="list">${res.map(c => `<button class="row" data-act="${act}Pick" data-id="${c.id}"><span class="main"><span class="t">${esc(c.name)}</span><span class="s">${esc([c.phone, c.email].filter(Boolean).join(', '))}</span></span></button>`).join('')}</div>`
+    : '<p class="hint">No match. Tap Add new customer.</p>';
+}
+VIEWS.edit = () => {
+  const dr = state.draft;
+  if (!dr) return '<div class="card empty">Nothing to edit.</div>';
+  theme(dr.venture);
+  const isNew = !dr.id, s = S();
+  const title = isNew ? {sale: 'New sale', invoice: 'New invoice', quote: 'New quote'}[dr.mode] : 'Edit ' + dr.number;
+  const tlob = dr.venture === 'tlob';
+  return `<h2>${title}</h2><p class="sub">${dr.mode === 'sale' ? 'Paid on the spot. Saves as a tax invoice with the payment recorded.' : dr.mode === 'quote' ? 'A price for the customer to accept. No GST is counted until it becomes an invoice and is paid.' : 'To be paid later. GST counts when the payment arrives.'}</p>
+  ${isNew ? `<div class="seg venture"><button data-v="tlob" class="${tlob ? 'on' : ''}" data-act="edVenture" data-val="tlob">tLOB</button><button data-v="bfs" class="${!tlob ? 'on' : ''}" data-act="edVenture" data-val="bfs">Blaise</button></div>
+  <div class="seg">${[['sale', 'Paid now'], ['invoice', 'Invoice'], ['quote', 'Quote']].map(([k, t]) => `<button class="${dr.mode === k ? 'on' : ''}" data-act="edMode" data-val="${k}">${t}</button>`).join('')}</div>` : ''}
+  <h3>Customer</h3><div class="card">${custPickHTML(dr.customerId, dr.walkin, 'ed')}</div>
+  <h3>Items</h3><div id="edLines">${dr.lines.map((l, i) => lineHTML(l, i, dr.excl)).join('') || '<div class="card empty">Add what you are selling.</div>'}</div>
+  <div class="pill-row">${tlob ? '<button class="btn" data-act="edPickItem">+ Book or stock item</button><button class="btn" data-act="edAddLine" data-kind="custom">+ Custom line</button>'
+    : '<button class="btn" data-act="edAddLine" data-kind="custom">+ Fixed price</button><button class="btn" data-act="edAddLine" data-kind="labour">+ Labour</button><button class="btn" data-act="edAddLine" data-kind="material">+ Materials</button><button class="btn" data-act="edAddLine" data-kind="travel">+ Travel</button><button class="btn" data-act="edPickItem">+ Stock item</button>'}</div>
+  <div class="card" id="edTotals">${totalsHTML(dr)}</div>
+  <div class="grid2">
+    <label class="f"><span>Date</span><input type="date" data-dk="date" value="${dr.date}"></label>
+    ${dr.mode === 'invoice' ? `<label class="f"><span>Due</span><input type="date" data-dk="due" value="${dr.due || ''}"></label>` : ''}
+    ${dr.mode === 'quote' ? `<label class="f"><span>Valid until</span><input type="date" data-dk="validUntil" value="${dr.validUntil || ''}"></label>` : ''}
+    ${dr.mode === 'sale' ? `<label class="f"><span>Paid by</span><select data-dk="payMethod">${['Cash', 'Bank transfer', 'Card', 'Other'].map(m => `<option ${dr.payMethod === m ? 'selected' : ''}>${m}</option>`).join('')}</select></label>` : ''}
+  </div>
+  <label class="f"><span>Delivery note for the label (optional)</span><input data-dk="delivery" value="${esc(dr.delivery)}" placeholder="e.g. Hand to Fr Michael for St Nicholas parish"></label>
+  <details><summary>More options</summary><div>
+    <label class="f"><span>Prices on this ${dr.mode === 'quote' ? 'quote' : 'invoice'} are</span>
+      <div class="seg" style="margin:0"><button class="${!dr.excl ? 'on' : ''}" data-act="edExcl" data-val="0">Including GST</button><button class="${dr.excl ? 'on' : ''}" data-act="edExcl" data-val="1">Plus GST</button></div></label>
+    <label class="check"><input type="checkbox" data-dk="zeroRated" ${dr.zeroRated ? 'checked' : ''}><span>Zero-rated: goods sent overseas (no GST charged)</span></label>
+    <label class="f"><span>Note printed on the document</span><textarea data-dk="notes" rows="3">${esc(dr.notes)}</textarea></label>
+  </div></details>
+  <div class="actions"><button class="btn primary wide" data-act="edSave">${dr.mode === 'sale' ? 'Save sale as paid' : dr.mode === 'quote' ? 'Save quote' : 'Save invoice'}</button>
+  <button class="btn wide" data-act="edCancel">Cancel</button></div>`;
+};
+VIEWS.edit.mount = () => {
+  const dr = state.draft; if (!dr) return;
+  const m = $('#main');
+  m.oninput = m.onchange = e => {
+    const el = e.target;
+    if (el.dataset.dl !== undefined) {
+      const i = +el.dataset.dl, l = dr.lines[i], k = el.dataset.k;
+      l[k] = k === 'desc' ? el.value : num(el.value);
+      if (l.kind === 'material' && (k === 'cost' || k === 'markup')) { l.unit = r2(num(l.cost) * (1 + num(l.markup) / 100)); const u = $('#lu' + i); if (u) u.value = l.unit; }
+      $('#la' + i).textContent = money(lineAmt(l)); $('#edTotals').innerHTML = totalsHTML(dr);
+    } else if (el.dataset.dk) {
+      dr[el.dataset.dk] = el.type === 'checkbox' ? el.checked : el.value;
+      if (el.dataset.dk === 'zeroRated') $('#edTotals').innerHTML = totalsHTML(dr);
+    } else if (el.id === 'custSearch') $('#custRes').innerHTML = custSearchResults(el.value, 'ed');
+  };
+};
+const reEdit = () => { const y = window.scrollY; render(); window.scrollTo(0, y); };
+const convertLines = (dr, toExcl) => dr.lines.forEach(l => {
+  const f = toExcl ? 1 / 1.15 : 1.15;
+  l.unit = r2(l.unit * f); if (l.kind === 'material') { l.cost = r2(num(l.cost) * f); l.unit = r2(num(l.cost) * (1 + num(l.markup) / 100)); }
+});
+ACT.edVenture = d => { const dr = state.draft; dr.venture = d.val; const ex = !!S().ventures[d.val].excl; if (ex !== dr.excl) { convertLines(dr, ex); dr.excl = ex; } DEV.lastVenture = d.val; saveDev(); reEdit(); };
+ACT.edMode = d => { const dr = state.draft; dr.mode = d.val; dr.type = d.val === 'quote' ? 'quote' : 'invoice'; reEdit(); };
+ACT.edExcl = d => { const dr = state.draft, ex = d.val === '1'; if (ex !== dr.excl) { convertLines(dr, ex); dr.excl = ex; } reEdit(); };
+ACT.edClear = () => { state.draft.customerId = ''; state.draft.walkin = false; reEdit(); setTimeout(() => { const i = $('#custSearch'); if (i) i.focus(); }, 30); };
+ACT.edWalkin = () => { state.draft.walkin = true; state.draft.customerId = ''; reEdit(); };
+ACT.edPick = d => { const dr = state.draft, c = get('customers', d.id); dr.customerId = d.id; dr.walkin = false; if (c && c.delivery && !dr.delivery) dr.delivery = c.delivery; reEdit(); };
+ACT.edNew = () => customerSheet(null, c => { state.draft.customerId = c.id; state.draft.walkin = false; if (c.delivery && !state.draft.delivery) state.draft.delivery = c.delivery; reEdit(); });
+ACT.delLine = d => { state.draft.lines.splice(+d.i, 1); reEdit(); };
+ACT.edAddLine = d => {
+  const s = S(), dr = state.draft, f = dr.excl ? 1 / 1.15 : 1;
+  const base = {kind: d.kind, qty: 1, unit: 0, desc: ''};
+  if (d.kind === 'labour') Object.assign(base, {desc: 'Labour', unit: r2(num(s.labourRate) * f)});
+  if (d.kind === 'travel') Object.assign(base, {desc: 'Travel', qty: 0, unit: r2(num(s.travelRate) * f)});
+  if (d.kind === 'material') Object.assign(base, {cost: 0, markup: num(s.markup)});
+  dr.lines.push(base); reEdit();
+  setTimeout(() => { const ins = $$('#edLines .line-card'); const last = ins[ins.length - 1]; if (last) { const inp = $('input', last); inp.focus(); inp.select(); } }, 30);
+};
+ACT.edPickItem = () => itemPicker(state.draft.venture, it => {
+  const dr = state.draft, ex = dr.lines.find(l => l.itemId === it.id);
+  if (ex) ex.qty = (+ex.qty || 0) + 1;
+  else dr.lines.push({kind: 'item', itemId: it.id, desc: it.name, qty: 1, unit: r2(dr.excl ? it.price / 1.15 : it.price)});
+});
+ACT.edCancel = () => { if (state.draft.lines.length && !confirm('Discard this ' + (state.draft.mode === 'quote' ? 'quote' : 'sale') + '?')) return; state.draft = null; history.back(); };
+ACT.edSave = () => {
+  const dr = state.draft;
+  dr.lines = dr.lines.filter(l => (l.desc || '').trim() || lineAmt(l));
+  if (!dr.lines.length) { reEdit(); return toast('Add at least one line.'); }
+  if (dr.lines.some(l => !(l.desc || '').trim())) return toast('Every line needs a description.');
+  if (dr.type === 'invoice' && !confirmFiled(dr.date)) return;
+  const isNew = !dr.id, prev = isNew ? null : get('docs', dr.id);
+  const doc = {...(prev || {}), type: dr.type, venture: dr.venture, date: dr.date || today(), customerId: dr.customerId || '',
+    lines: dr.lines.map(l => { const o = {kind: l.kind, desc: l.desc.trim(), qty: num(l.qty), unit: r2(num(l.unit))}; if (l.itemId) o.itemId = l.itemId; if (l.kind === 'material') { o.cost = num(l.cost); o.markup = num(l.markup); } return o; }),
+    excl: !!dr.excl, zeroRated: !!dr.zeroRated, notes: dr.notes || '', delivery: dr.delivery || '', shipmentId: dr.shipmentId || ''};
+  if (dr.type === 'invoice') { doc.due = dr.mode === 'sale' ? doc.date : (dr.due || ''); } else doc.validUntil = dr.validUntil || '';
+  if (isNew) { doc.number = nextNumber(doc.venture, doc.type); if (doc.type === 'quote') doc.status = 'open'; if (dr.fromQuote) doc.fromQuote = dr.fromQuote; }
+  if (!isNew && doc.type === 'invoice') { const paid = docPaid(doc); if (paid - docTotals(doc).total > 0.005 && !confirm('Payments already received (' + money(paid) + ') are more than the new total. Save anyway?')) return; }
+  const saved = put('docs', doc); syncDocMoves(saved);
+  if (isNew && dr.mode === 'sale') put('payments', {docId: saved.id, date: saved.date, amount: docTotals(saved).total, method: dr.payMethod || 'Cash'});
+  if (dr.fromQuote) { const q = get('docs', dr.fromQuote); if (q) put('docs', {...q, status: 'accepted', invoiceId: saved.id}); }
+  if (dr.preorderId) { const po = get('preorders', dr.preorderId); if (po) put('preorders', {...po, docId: saved.id}); }
+  DEV.lastVenture = saved.venture; saveDev();
+  state.draft = null;
+  go('doc', {id: saved.id, fresh: 1}, 'replace');
+};
+
+/* stock item picker */
+function itemPicker(venture, onPick) {
+  let q = '';
+  const listHTML = () => {
+    const items = all('items').filter(i => i.venture === venture && (!q || i.name.toLowerCase().includes(q))).sort((a, b) => a.name.localeCompare(b.name));
+    return items.length ? `<div class="list">${items.map(i => `<button class="row" data-act="pickItem" data-id="${i.id}"><span class="main"><span class="t">${esc(i.name)}</span>
+      <span class="s">${i.track ? stockOf(i.id) + ' in stock' : 'Not stock-tracked'}</span></span><span class="amt">${money(i.price)}</span></button>`).join('')}</div>`
+      : `<div class="card empty">${q ? 'No match.' : 'No items yet for ' + vShort(venture) + '.'}</div>`;
+  };
+  openSheet(`<h2>Add an item</h2><input id="ipSearch" class="search" type="search" placeholder="Search items"><div id="ipList">${listHTML()}</div>
+    <div class="actions"><button class="btn" data-act="ipNew">New stock item</button><button class="btn primary" data-act="ipDone">Done</button></div>`, sh => {
+    $('#ipSearch', sh).addEventListener('input', e => { q = e.target.value.toLowerCase().trim(); $('#ipList').innerHTML = listHTML(); });
+  });
+  ACT.pickItem = d => { const it = get('items', d.id); onPick(it); toast('Added ' + it.name); };
+  ACT.ipDone = () => closeSheet(reEdit);
+  ACT.ipNew = () => closeSheet(() => itemSheet(null, venture, it => { onPick(it); reEdit(); }));
+}
+
+/* quick label */
+ACT.quickLabel = () => {
+  openSheet(`<h2>Print a label</h2><p class="sub">For a parcel or wrapped book that is not linked to a sale.</p>
+    <label class="f"><span>Name</span><input id="qlName" autofocus placeholder="Who it is for"></label>
+    <label class="f"><span>What is in it (optional)</span><input id="qlItem" placeholder="e.g. IHT Prayer Book"></label>
+    <label class="f"><span>Delivery note (optional)</span><input id="qlNote" placeholder="e.g. Via Fr Michael to St Nicholas, Wellington"></label>
+    <label class="f"><span>From</span><select id="qlFrom"><option value="tlob">${esc(vName('tlob'))}</option><option value="bfs">${esc(vName('bfs'))}</option></select></label>
+    <div class="actions"><button class="btn primary wide" data-act="qlGo">Preview label</button></div>`);
+  ACT.qlGo = () => {
+    const o = {name: $('#qlName').value.trim(), lines: [$('#qlItem').value.trim()], note: $('#qlNote').value.trim(), from: vName($('#qlFrom').value)};
+    if (!o.name) return toast('Enter a name for the label.');
+    closeSheet(() => printPreview('Label', labelBlocks(o)));
+  };
+};
+
+/* ---------- SHIPMENTS (pre-order campaigns) ---------- */
+const SHIP_STATUS = {interest: 'Taking pre-orders', ordered: 'Ordered', arrived: 'Arrived', closed: 'Closed'};
+function shipStats(sh) {
+  const pre = all('preorders').filter(p => p.shipmentId === sh.id);
+  const docs = all('docs').filter(d => d.shipmentId === sh.id && d.type === 'invoice' && !d.void);
+  const sold = sum(docs, d => sum((d.lines || []).filter(l => l.itemId === sh.itemId), l => l.qty));
+  const gifts = all('moves').filter(m => m.reason === 'gift' && m.shipmentId === sh.id);
+  const gifted = -sum(gifts, m => m.qty);
+  const costs = all('expenses').filter(e => e.shipmentId === sh.id);
+  const costNet = sum(costs, e => num(e.amount) - num(e.gst));
+  const income = sum(docs, d => docTotals(d).net);
+  const received = sum(docs, docPaid);
+  return {pre, docs, sold, gifts, gifted, costs, costNet, income, received,
+    preQty: sum(pre, p => p.qty), left: r2((+sh.qtyReceived || 0) - sold - gifted)};
+}
+function shipRow(sh) {
+  const st = shipStats(sh);
+  return `<button class="row" data-act="go" data-view="shipment" data-id="${sh.id}"><span class="bar tlob"></span><span class="main"><span class="t">${esc(sh.title)}</span>
+    <span class="s">${SHIP_STATUS[sh.status] || ''}, ${st.preQty} pre-ordered${sh.qtyOrdered ? ', ' + sh.qtyOrdered + ' ordered' : ''}</span></span><span class="amt">${money(sh.price)}</span></button>`;
+}
+VIEWS.shipments = () => {
+  const list = all('shipments').sort((a, b) => b.createdAt - a.createdAt);
+  const open = list.filter(x => x.status !== 'closed'), closed = list.filter(x => x.status === 'closed');
+  return `<h2>Shipments</h2><p class="sub">Announce a title, gather pre-orders, order the copies, then label and invoice everyone when they arrive.</p>
+  <div class="actions"><button class="btn primary wide" data-act="newShipment">New shipment</button></div>
+  ${open.length ? `<div class="list">${open.map(shipRow).join('')}</div>` : '<div class="card empty">No shipments under way.</div>'}
+  ${closed.length ? `<h3>Closed</h3><div class="list">${closed.map(shipRow).join('')}</div>` : ''}`;
+};
+ACT.newShipment = () => shipmentSheet(null);
+function shipmentSheet(sh) {
+  const items = all('items').filter(i => i.venture === 'tlob').sort((a, b) => a.name.localeCompare(b.name));
+  openSheet(`<h2>${sh ? 'Edit shipment' : 'New shipment'}</h2>
+    <label class="f"><span>Book title</span><input id="shTitle" value="${esc(sh ? sh.title : '')}" placeholder="e.g. IHT Prayer Book" autofocus></label>
+    <label class="f"><span>Price each, including GST</span><input id="shPrice" inputmode="decimal" value="${sh ? sh.price : ''}" placeholder="55.00"></label>
+    <label class="f"><span>Stock item</span><select id="shItem"><option value="">Create a new stock item with this title</option>
+      ${items.map(i => `<option value="${i.id}" ${sh && sh.itemId === i.id ? 'selected' : ''}>${esc(i.name)}</option>`).join('')}</select></label>
+    <label class="f"><span>Supplier (optional)</span><input id="shSupp" value="${esc(sh ? sh.supplier || '' : '')}"></label>
+    <label class="f"><span>Notes (optional)</span><textarea id="shNotes" rows="2">${esc(sh ? sh.notes || '' : '')}</textarea></label>
+    <div class="actions"><button class="btn primary wide" data-act="saveShipment">Save shipment</button>
+    ${sh ? '<button class="btn danger wide" data-act="deleteShipment">Delete shipment</button>' : ''}</div>`);
+  ACT.saveShipment = () => {
+    const title = $('#shTitle').value.trim(), price = r2(num($('#shPrice').value));
+    if (!title) return toast('Enter the book title.');
+    let itemId = $('#shItem').value;
+    if (!itemId) itemId = put('items', {venture: 'tlob', name: title, price, track: true}).id;
+    const rec = put('shipments', {...(sh || {status: 'interest', qtyOrdered: 0, qtyReceived: 0}), title, price, itemId, supplier: $('#shSupp').value.trim(), notes: $('#shNotes').value.trim()});
+    closeSheet(() => sh ? render() : go('shipment', {id: rec.id}));
+  };
+  ACT.deleteShipment = () => {
+    const st = shipStats(sh);
+    if (st.docs.length) return toast('Invoices are linked to this shipment. Close it instead.');
+    if (!confirm('Delete this shipment and its pre-order list?')) return;
+    st.pre.forEach(p => remove('preorders', p.id)); remove('shipments', sh.id);
+    closeSheet(() => go('shipments', {}, 'replace'));
+  };
+}
+VIEWS.shipment = p => {
+  const sh = get('shipments', p.id);
+  if (!sh) return '<div class="card empty">This shipment was deleted.</div>';
+  theme('tlob');
+  const st = shipStats(sh), item = get('items', sh.itemId);
+  const preRows = st.pre.sort((a, b) => a.createdAt - b.createdAt).map(po => {
+    const c = get('customers', po.customerId), d = get('docs', po.docId);
+    const status = d ? statusChip(d) : '<span class="chip">Waiting</span>';
+    return `<button class="row" data-act="preorderMenu" data-id="${po.id}"><span class="main"><span class="t">${esc(c ? c.name : 'Unknown')}${po.qty > 1 ? ' × ' + po.qty : ''}</span>
+      <span class="s">${po.delivery ? esc(po.delivery) + ' ' : ''}${status}${po.delivered ? ' <span class="chip paid">Delivered</span>' : ''}</span></span></button>`;
+  }).join('');
+  const next = sh.status === 'interest' ? `<button class="btn primary wide" data-act="shipOrdered">Mark as ordered</button>`
+    : sh.status === 'ordered' ? `<button class="btn primary wide" data-act="shipArrived">Mark as arrived</button>`
+    : sh.status === 'arrived' ? `<button class="btn wide" data-act="shipClose">Close shipment</button>` : `<button class="btn wide" data-act="shipReopen">Reopen shipment</button>`;
+  return `<h2>${esc(sh.title)}</h2><p class="sub">${SHIP_STATUS[sh.status]}, ${money(sh.price)} each</p>
+  <div class="card">
+    <div class="kv"><span>Pre-ordered</span><b>${st.preQty}</b></div>
+    <div class="kv"><span>Copies ordered</span><b>${sh.qtyOrdered || 0}</b></div>
+    <div class="kv"><span>Copies received</span><b>${sh.qtyReceived || 0}</b></div>
+    <div class="kv"><span>Invoiced</span><b>${st.sold}</b></div>
+    <div class="kv"><span>Gifted</span><b>${st.gifted}</b></div>
+    ${sh.qtyReceived ? `<div class="kv"><span>Left from this shipment</span><b>${st.left}</b></div>` : ''}
+    ${item && item.track ? `<div class="kv"><span>In stock now (all shipments)</span><b>${stockOf(item.id)}</b></div>` : ''}
+  </div>
+  <div class="actions">${next}<button class="btn" data-act="addPreorder">Add pre-order</button><button class="btn" data-act="shipLabels">Print all labels</button>
+    <button class="btn" data-act="shipInvoiceAll">Invoice all waiting</button><button class="btn" data-act="shipGift">Record a gift</button>
+    <button class="btn" data-act="shipCost">Add a cost</button><button class="btn" data-act="editShipment">Edit details</button></div>
+  <h3>Pre-orders</h3>${preRows ? `<div class="list">${preRows}</div>` : '<div class="card empty">No pre-orders yet. Add names as they come in from WhatsApp and Facebook.</div>'}
+  <h3>Money</h3><div class="card">
+    <div class="kv"><span>Costs (excl. claimable GST)</span><b>${money(st.costNet)}</b></div>
+    <div class="kv"><span>Sales invoiced (excl. GST)</span><b>${money(st.income)}</b></div>
+    <div class="kv"><span>Received so far</span><b>${money(st.received)}</b></div>
+    <div class="kv total"><span>${st.income - st.costNet >= 0 ? 'Surplus' : 'Shortfall'}</span><b>${money(Math.abs(st.income - st.costNet))}</b></div>
+    ${st.costs.length ? `<details style="margin:12px 0 0"><summary>Costs (${st.costs.length})</summary><div>${st.costs.map(e => `<div class="kv"><button class="linkish" data-act="editExpense" data-id="${e.id}">${esc(e.supplier || e.desc || 'Cost')}, ${fmtDate(e.date)}</button><b>${money(e.amount)}</b></div>`).join('')}</div></details>` : ''}
+  </div>
+  ${st.gifts.length ? `<h3>Gifts</h3><div class="list">${st.gifts.map(g => `<div class="row"><span class="main"><span class="t">${esc(g.recipient || 'Gifted copy')}${-g.qty > 1 ? ' × ' + (-g.qty) : ''}</span><span class="s">${fmtDate(g.date)}${g.note ? ', ' + esc(g.note) : ''}</span></span><button class="btn small" data-act="delGift" data-id="${g.id}">Remove</button></div>`).join('')}</div>` : ''}`;
+};
+const curShip = () => get('shipments', state.p.id);
+ACT.editShipment = () => shipmentSheet(curShip());
+ACT.shipOrdered = () => {
+  const sh = curShip(), st = shipStats(sh);
+  openSheet(`<h2>Mark as ordered</h2><label class="f"><span>Copies ordered</span><input id="soQty" inputmode="numeric" value="${sh.qtyOrdered || st.preQty}" autofocus></label>
+   <label class="f"><span>Expected arrival (optional)</span><input id="soDate" type="date" value="${sh.expected || ''}"></label>
+   <div class="actions"><button class="btn primary wide" data-act="soSave">Save</button></div>`);
+  ACT.soSave = () => { put('shipments', {...sh, status: 'ordered', qtyOrdered: num($('#soQty').value), expected: $('#soDate').value}); closeSheet(render); };
+};
+ACT.shipArrived = () => {
+  const sh = curShip();
+  openSheet(`<h2>Mark as arrived</h2><p class="sub">The copies go into stock, ready to invoice and label.</p>
+   <label class="f"><span>Copies received</span><input id="saQty" inputmode="numeric" value="${sh.qtyOrdered || ''}" autofocus></label>
+   <label class="f"><span>Date received</span><input id="saDate" type="date" value="${today()}"></label>
+   <div class="actions"><button class="btn primary wide" data-act="saSave">Save</button></div>`);
+  ACT.saSave = () => {
+    const q = num($('#saQty').value), date = $('#saDate').value || today();
+    if (q <= 0) return toast('Enter how many copies arrived.');
+    all('moves').filter(m => m.reason === 'receive' && m.shipmentId === sh.id).forEach(m => remove('moves', m.id));
+    put('moves', {itemId: sh.itemId, date, qty: q, reason: 'receive', shipmentId: sh.id});
+    put('shipments', {...sh, status: 'arrived', qtyReceived: q, arrivedDate: date});
+    closeSheet(() => { toast(q + ' copies added to stock'); render(); });
+  };
+};
+ACT.shipClose = () => { put('shipments', {...curShip(), status: 'closed'}); render(); };
+ACT.shipReopen = () => { put('shipments', {...curShip(), status: 'arrived'}); render(); };
+ACT.shipCost = () => editExpense({shipmentId: curShip().id, venture: 'tlob'});
+ACT.shipLabels = () => {
+  const sh = curShip(), pre = shipStats(sh).pre.filter(p => !p.delivered);
+  if (!pre.length) return toast('No undelivered pre-orders to label.');
+  let blocks = [];
+  pre.forEach((po, i) => {
+    const c = get('customers', po.customerId);
+    if (i) blocks.push({cut: 1});
+    blocks = blocks.concat(labelBlocks({name: c ? c.name : '', lines: [(po.qty > 1 ? po.qty + ' x ' : '') + sh.title], note: po.delivery || (c && c.delivery) || '', from: vName('tlob')}));
+  });
+  printPreview(pre.length + ' labels', blocks);
+};
+function invoicePreorder(sh, po, paid) {
+  const s = S(), c = get('customers', po.customerId);
+  const doc = put('docs', {type: 'invoice', venture: 'tlob', number: nextNumber('tlob', 'invoice'), date: today(), due: paid ? today() : addDays(today(), s.terms),
+    customerId: po.customerId, lines: [{kind: 'item', itemId: sh.itemId, desc: sh.title, qty: po.qty, unit: r2(num(sh.price))}],
+    excl: false, zeroRated: false, notes: '', delivery: po.delivery || (c && c.delivery) || '', shipmentId: sh.id});
+  syncDocMoves(doc);
+  if (paid) put('payments', {docId: doc.id, date: today(), amount: docTotals(doc).total, method: paid});
+  put('preorders', {...po, docId: doc.id});
+  return doc;
+}
+ACT.shipInvoiceAll = () => {
+  const sh = curShip(), waiting = shipStats(sh).pre.filter(p => !p.docId);
+  if (!waiting.length) return toast('Every pre-order already has an invoice.');
+  if (!confirm('Create ' + waiting.length + ' unpaid invoice(s) dated today, one per pre-order?')) return;
+  waiting.forEach(po => invoicePreorder(sh, po, ''));
+  toast(waiting.length + ' invoices created'); render();
+};
+ACT.shipGift = () => {
+  const sh = curShip();
+  openSheet(`<h2>Record a gift</h2><p class="sub">A copy given free from the community fund. It leaves stock at no charge.</p>
+   <label class="f"><span>Recipient (optional, stays in your records only)</span><input id="gfName" autofocus></label>
+   <label class="f"><span>Copies</span><input id="gfQty" inputmode="numeric" value="1"></label>
+   <label class="f"><span>Date</span><input id="gfDate" type="date" value="${today()}"></label>
+   <label class="f"><span>Note (optional)</span><input id="gfNote"></label>
+   <div class="actions"><button class="btn primary wide" data-act="gfSave">Save gift</button></div>`);
+  ACT.gfSave = () => {
+    const q = num($('#gfQty').value); if (q <= 0) return toast('Enter the number of copies.');
+    put('moves', {itemId: sh.itemId, date: $('#gfDate').value || today(), qty: -q, reason: 'gift', shipmentId: sh.id, recipient: $('#gfName').value.trim(), note: $('#gfNote').value.trim()});
+    closeSheet(() => { toast('Gift recorded'); render(); });
+  };
+};
+ACT.delGift = d => { if (confirm('Remove this gift record?')) { remove('moves', d.id); render(); } };
+ACT.addPreorder = () => preorderSheet(curShip(), null);
+function preorderSheet(sh, po) {
+  let sel = po ? po.customerId : '';
+  const body = () => {
+    const c = get('customers', sel);
+    return `<h2>${po ? 'Edit pre-order' : 'Add pre-order'}</h2><p class="sub">${esc(sh.title)}</p>
+    <div class="card">${custPickHTML(sel, false, 'po')}</div>
+    <label class="f"><span>Copies</span><input id="poQty" inputmode="numeric" value="${po ? po.qty : 1}"></label>
+    <label class="f"><span>Delivery note for the label</span><input id="poDel" value="${esc(po ? po.delivery || '' : (c && c.delivery) || '')}" placeholder="e.g. At church, or Via Fr Michael to St Nicholas"></label>
+    <div class="actions"><button class="btn primary wide" data-act="poSave">Save pre-order</button></div>`;
+  };
+  const mount = s => { const i = $('#custSearch', s); if (i) { i.addEventListener('input', e => $('#custRes').innerHTML = custSearchResults(e.target.value, 'po')); i.focus(); } };
+  openSheet(body(), mount);
+  ACT.poPick = d => { sel = d.id; refreshSheet(body()); };
+  ACT.poClear = () => { sel = ''; refreshSheet(body()); };
+  ACT.poNew = () => {
+    const q = ($('#custSearch') || {}).value || '';
+    refreshSheet(`<h2>New customer</h2>${customerFields({name: q})}<div class="actions"><button class="btn primary wide" data-act="poNewSave">Save customer</button></div>`);
+    ACT.poNewSave = () => { const c = readCustomer(null); if (!c) return; sel = c.id; refreshSheet(body()); };
+  };
+  ACT.poSave = () => {
+    if (!sel) return toast('Choose or add a customer.');
+    put('preorders', {...(po || {}), shipmentId: sh.id, customerId: sel, qty: Math.max(1, num($('#poQty').value)), delivery: $('#poDel').value.trim()});
+    closeSheet(() => { toast('Pre-order saved'); render(); });
+  };
+}
+ACT.preorderMenu = d => {
+  const po = get('preorders', d.id), sh = get('shipments', po.shipmentId), c = get('customers', po.customerId), doc = get('docs', po.docId);
+  openSheet(`<h2>${esc(c ? c.name : 'Pre-order')}</h2><p class="sub">${po.qty} × ${esc(sh.title)}${doc ? ', ' + esc(doc.number) : ''}</p>
+   <div class="actions">
+   ${doc ? `<button class="btn primary wide" data-act="openDoc" data-id="${doc.id}">Open ${esc(doc.number)}</button>`
+     : `<button class="btn primary wide" data-act="poPaidNow" data-m="Cash">Paid now in cash</button><button class="btn" data-act="poPaidNow" data-m="Bank transfer">Paid by bank transfer</button><button class="btn" data-act="poInvoice">Invoice to pay later</button>`}
+   <button class="btn" data-act="poLabel">Print label</button>
+   <button class="btn" data-act="poDelivered">${po.delivered ? 'Mark not delivered' : 'Mark delivered'}</button>
+   <button class="btn" data-act="poEdit">Edit</button>
+   ${doc ? '' : '<button class="btn danger" data-act="poRemove">Remove</button>'}</div>`);
+  ACT.poPaidNow = x => { const nd = invoicePreorder(sh, po, x.m); closeSheet(() => { toast(nd.number + ' saved as paid'); render(); }); };
+  ACT.poInvoice = () => { const nd = invoicePreorder(sh, po, ''); closeSheet(() => { toast(nd.number + ' created'); render(); }); };
+  ACT.poLabel = () => closeSheet(() => printPreview('Label', labelBlocks({name: c ? c.name : '', lines: [(po.qty > 1 ? po.qty + ' x ' : '') + sh.title], note: po.delivery || (c && c.delivery) || '', from: vName('tlob')})));
+  ACT.poDelivered = () => { put('preorders', {...po, delivered: !po.delivered}); closeSheet(render); };
+  ACT.poEdit = () => closeSheet(() => preorderSheet(sh, po));
+  ACT.poRemove = () => { if (confirm('Remove this pre-order?')) { remove('preorders', po.id); closeSheet(render); } };
+};
+
+/* ---------- CUSTOMERS ---------- */
+let custQ = '';
+VIEWS.customers = () => `<h2>People</h2><p class="sub">Customers for both ventures, with their orders and balances.</p>
+  <div class="actions"><button class="btn primary wide" data-act="newCustomer">Add customer</button></div>
+  <input class="search" id="custListSearch" type="search" placeholder="Search name, phone or email" value="${esc(custQ)}"><div id="custList"></div>`;
+VIEWS.customers.mount = () => {
+  const draw = () => {
+    const q = custQ.trim().toLowerCase();
+    const owing = {};
+    all('docs').forEach(d => { const b = docBalance(d); if (b > 0.005) owing[d.customerId] = r2((owing[d.customerId] || 0) + b); });
+    const list = all('customers').filter(c => !q || [c.name, c.phone, c.email, c.parish].join(' ').toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+    $('#custList').innerHTML = list.length ? `<div class="list">${list.map(c => `<button class="row" data-act="go" data-view="customer" data-id="${c.id}"><span class="main"><span class="t">${esc(c.name)}</span>
+      <span class="s">${esc([c.phone, c.email, c.parish].filter(Boolean).join(', ') || 'No contact details')}</span></span>${owing[c.id] ? `<span class="amt">${money(owing[c.id])}<small>owing</small></span>` : ''}</button>`).join('')}</div>`
+      : `<div class="card empty">${q ? 'Nobody matches.' : 'No customers yet. They are added as you make sales and take pre-orders.'}</div>`;
+  };
+  $('#custListSearch').addEventListener('input', e => { custQ = e.target.value; draw(); });
+  draw();
+};
+function customerFields(c) {
+  c = c || {};
+  return `<label class="f"><span>Name</span><input id="cuName" value="${esc(c.name || '')}" autofocus></label>
+  <div class="grid2"><label class="f"><span>Phone</span><input id="cuPhone" type="tel" value="${esc(c.phone || '')}"></label>
+  <label class="f"><span>Email</span><input id="cuEmail" type="email" value="${esc(c.email || '')}"></label></div>
+  <label class="f"><span>Parish or church (optional)</span><input id="cuParish" value="${esc(c.parish || '')}"></label>
+  <label class="f"><span>Usual delivery (fills in their labels)</span><input id="cuDel" value="${esc(c.delivery || '')}" placeholder="e.g. At church on Sunday"></label>
+  <label class="f"><span>Postal or site address (optional)</span><textarea id="cuAddr" rows="2">${esc(c.address || '')}</textarea></label>
+  <label class="f"><span>Notes (optional)</span><textarea id="cuNotes" rows="2">${esc(c.notes || '')}</textarea></label>`;
+}
+function readCustomer(existing) {
+  const name = $('#cuName').value.trim();
+  if (!name) { toast('Enter a name.'); return null; }
+  const email = $('#cuEmail').value.trim();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('That email address does not look right.'); return null; }
+  return put('customers', {...(existing || {}), name, phone: $('#cuPhone').value.trim(), email, parish: $('#cuParish').value.trim(),
+    delivery: $('#cuDel').value.trim(), address: $('#cuAddr').value.trim(), notes: $('#cuNotes').value.trim()});
+}
+function customerSheet(c, after) {
+  openSheet(`<h2>${c ? 'Edit customer' : 'New customer'}</h2>${customerFields(c)}
+   <div class="actions"><button class="btn primary wide" data-act="cuSave">Save customer</button>${c ? '<button class="btn danger wide" data-act="cuDelete">Delete customer</button>' : ''}</div>`);
+  ACT.cuSave = () => { const rec = readCustomer(c); if (rec) closeSheet(() => after ? after(rec) : render()); };
+  ACT.cuDelete = () => {
+    if (all('docs').some(d => d.customerId === c.id)) return toast('This customer has sales on record, so they are kept for your accounts.');
+    if (!confirm('Delete ' + c.name + '?')) return;
+    remove('customers', c.id); closeSheet(() => go('customers', {}, 'replace'));
+  };
+}
+ACT.newCustomer = () => customerSheet(null, c => go('customer', {id: c.id}));
+const waNumber = ph => { let d = String(ph || '').replace(/[^\d+]/g, ''); if (d.startsWith('+')) return d.slice(1); if (d.startsWith('0')) return '64' + d.slice(1); return d; };
+VIEWS.customer = p => {
+  const c = get('customers', p.id);
+  if (!c) return '<div class="card empty">This customer was deleted.</div>';
+  const docs = all('docs').filter(d => d.customerId === c.id).sort((a, b) => b.date > a.date ? 1 : -1);
+  const pre = all('preorders').filter(x => x.customerId === c.id && !x.docId);
+  const owe = {tlob: 0, bfs: 0}; docs.forEach(d => owe[d.venture] = r2(owe[d.venture] + docBalance(d)));
+  const spent = sum(docs.filter(d => d.type === 'invoice' && !d.void), d => docTotals(d).total);
+  return `<h2>${esc(c.name)}</h2><p class="sub">${esc([c.parish, c.delivery].filter(Boolean).join(', ') || 'Customer')}</p>
+  <div class="card">
+    ${c.phone ? `<div class="kv"><span>Phone</span><b>${esc(c.phone)}</b></div>` : ''}
+    ${c.email ? `<div class="kv"><span>Email</span><b style="word-break:break-all">${esc(c.email)}</b></div>` : ''}
+    ${c.address ? `<div class="kv"><span>Address</span><b style="text-align:right">${esc(c.address)}</b></div>` : ''}
+    <div class="kv"><span>Total bought</span><b>${money(spent)}</b></div>
+    ${owe.tlob ? `<div class="kv"><span>Owing to tLOB</span><b>${money(owe.tlob)}</b></div>` : ''}
+    ${owe.bfs ? `<div class="kv"><span>Owing to Blaise</span><b>${money(owe.bfs)}</b></div>` : ''}
+    ${c.notes ? `<p class="hint" style="margin-top:8px">${esc(c.notes)}</p>` : ''}
+  </div>
+  <div class="actions">
+    <button class="btn primary wide" data-act="newDoc" data-mode="sale" data-cust="${c.id}">New sale for ${esc(c.name.split(' ')[0])}</button>
+    ${c.phone ? `<a class="btn" href="tel:${esc(c.phone.replace(/\s/g, ''))}">Call</a><a class="btn" href="https://wa.me/${waNumber(c.phone)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+    <button class="btn" data-act="newDoc" data-mode="invoice" data-cust="${c.id}">New invoice</button>
+    <button class="btn" data-act="newDoc" data-mode="quote" data-cust="${c.id}">New quote</button>
+    ${owe.tlob ? `<button class="btn" data-act="statement" data-v="tlob">Email tLOB statement</button>` : ''}
+    ${owe.bfs ? `<button class="btn" data-act="statement" data-v="bfs">Email Blaise statement</button>` : ''}
+    <button class="btn" data-act="editCustomer">Edit details</button>
+  </div>
+  ${pre.length ? `<h3>Waiting for books</h3><div class="list">${pre.map(x => { const sh = get('shipments', x.shipmentId); return sh ? `<button class="row" data-act="go" data-view="shipment" data-id="${sh.id}"><span class="main"><span class="t">${esc(sh.title)}${x.qty > 1 ? ' × ' + x.qty : ''}</span><span class="s">${SHIP_STATUS[sh.status]}</span></span></button>` : ''; }).join('')}</div>` : ''}
+  <h3>Orders and quotes</h3>${docs.length ? `<div class="list">${docs.map(docRow).join('')}</div>` : '<div class="card empty">No orders yet.</div>'}`;
+};
+ACT.editCustomer = () => customerSheet(get('customers', state.p.id));
+ACT.statement = d => {
+  const c = get('customers', state.p.id), v = S().ventures[d.v], inner = statementInner(c, d.v);
+  emailSheet({heading: 'Email statement', to: c.email, subject: v.name + ': statement for ' + c.name, inner, filename: 'Statement ' + c.name, fromName: v.name, replyTo: v.email,
+    message: `Kia ora ${c.name.split(' ')[0]},\n\nHere is your statement from ${v.name}. Please get in touch if anything looks wrong.\n\nNgā mihi,\n${S().ownerName || v.name}`,
+    text: 'Statement attached.'});
+};
+
+/* ---------- STOCK ITEMS ---------- */
+VIEWS.items = p => {
+  const v = p.v || 'tlob';
+  const items = all('items').filter(i => i.venture === v).sort((a, b) => a.name.localeCompare(b.name));
+  return `<h2>Stock list</h2><p class="sub">Items you sell, with prices including GST. Tap one to edit it or adjust stock.</p>
+  <div class="seg venture"><button data-v="tlob" class="${v === 'tlob' ? 'on' : ''}" data-act="itemsV" data-val="tlob">tLOB</button><button data-v="bfs" class="${v === 'bfs' ? 'on' : ''}" data-act="itemsV" data-val="bfs">Blaise</button></div>
+  <div class="actions"><button class="btn primary wide" data-act="newItem" data-v="${v}">Add item</button></div>
+  ${items.length ? `<div class="list">${items.map(i => `<button class="row" data-act="editItem" data-id="${i.id}"><span class="main"><span class="t">${esc(i.name)}</span>
+    <span class="s">${i.track ? stockOf(i.id) + ' in stock' : 'Stock not tracked'}</span></span><span class="amt">${money(i.price)}</span></button>`).join('')}</div>` : '<div class="card empty">No items yet.</div>'}`;
+};
+ACT.itemsV = d => go('items', {v: d.val}, 'replace');
+ACT.newItem = d => itemSheet(null, d.v, () => render());
+ACT.editItem = d => itemSheet(get('items', d.id), null, () => render());
+function itemSheet(it, venture, after) {
+  venture = it ? it.venture : venture || 'tlob';
+  const moves = it ? all('moves').filter(m => m.itemId === it.id).sort((a, b) => b.date > a.date ? 1 : -1).slice(0, 15) : [];
+  const why = {sale: 'Sold', receive: 'Received', gift: 'Gifted', adjust: 'Adjusted'};
+  openSheet(`<h2>${it ? 'Edit item' : 'New item'}</h2><p class="sub">${esc(vName(venture))}</p>
+   <label class="f"><span>Name, as shown on receipts</span><input id="itName" value="${esc(it ? it.name : '')}" autofocus></label>
+   <div class="grid2"><label class="f"><span>Price incl. GST</span><input id="itPrice" inputmode="decimal" value="${it ? it.price : ''}"></label>
+   <label class="f"><span>Your cost (optional)</span><input id="itCost" inputmode="decimal" value="${it && it.cost ? it.cost : ''}"></label></div>
+   <label class="check"><input type="checkbox" id="itTrack" ${!it || it.track ? 'checked' : ''}><span>Track how many I have in stock</span></label>
+   ${it && it.track ? `<div class="card"><div class="kv"><span>In stock</span><b>${stockOf(it.id)}</b></div>
+     <div class="grid2" style="margin-top:10px"><input id="itAdj" inputmode="numeric" placeholder="+5 or -2"><button class="btn" data-act="itAdjust">Adjust stock</button></div>
+     ${moves.length ? `<details style="margin:12px 0 0"><summary>Recent movements</summary><div>${moves.map(m => `<div class="kv"><span>${fmtDate(m.date)} ${why[m.reason] || ''}${m.note ? ', ' + esc(m.note) : ''}</span><b>${m.qty > 0 ? '+' : ''}${m.qty}</b></div>`).join('')}</div></details>` : ''}</div>` : ''}
+   <div class="actions"><button class="btn primary wide" data-act="itSave">Save item</button>${it ? '<button class="btn danger wide" data-act="itDelete">Delete item</button>' : ''}</div>`);
+  ACT.itSave = () => {
+    const name = $('#itName').value.trim(); if (!name) return toast('Enter a name.');
+    const rec = put('items', {...(it || {venture}), name, price: r2(num($('#itPrice').value)), cost: r2(num($('#itCost').value)), track: $('#itTrack').checked});
+    closeSheet(() => after && after(rec));
+  };
+  ACT.itAdjust = () => {
+    const q = num($('#itAdj').value); if (!q) return toast('Enter a number such as 5 or -2.');
+    const note = prompt('Reason (optional), e.g. stocktake or damaged copy') || '';
+    put('moves', {itemId: it.id, date: today(), qty: q, reason: 'adjust', note});
+    closeSheet(() => { toast('Stock adjusted'); itemSheet(get('items', it.id), null, after); });
+  };
+  ACT.itDelete = () => { if (!confirm('Delete ' + it.name + '? Past sales keep their wording.')) return; remove('items', it.id); closeSheet(() => after && after()); };
+}
+
+/* ---------- EXPENSES ---------- */
+VIEWS.expenses = p => {
+  const periods = periodsList(), key = p.key || periods[0].key, per = periods.find(x => x.key === key) || periodOf(today());
+  const list = all('expenses').filter(e => inPeriod(e.date, per)).sort((a, b) => b.date > a.date ? 1 : -1);
+  return `<h2>Expenses</h2><p class="sub">Purchases and costs, by the date you paid them.</p>
+  <div class="actions"><button class="btn primary wide" data-act="editExpense">Add expense</button></div>
+  <label class="f"><span>GST period</span><select id="expPer">${periods.map(x => `<option value="${x.key}" ${x.key === per.key ? 'selected' : ''}>${x.label}</option>`).join('')}</select></label>
+  ${list.length ? `<div class="list">${list.map(e => `<button class="row" data-act="editExpense" data-id="${e.id}"><span class="bar ${e.venture}"></span><span class="main"><span class="t">${esc(e.supplier || e.desc || 'Expense')}</span>
+    <span class="s">${fmtDate(e.date)}, ${esc(e.category || '')}${e.asset ? ', asset' : ''}</span></span><span class="amt">${money(e.amount)}<small>GST ${money(e.gst)}</small></span></button>`).join('')}</div>
+    <div class="card"><div class="kv"><span>Total paid</span><b>${money(sum(list, e => e.amount))}</b></div><div class="kv"><span>GST to claim</span><b>${money(sum(list, e => e.gst))}</b></div></div>`
+    : '<div class="card empty">No expenses in this period.</div>'}`;
+};
+VIEWS.expenses.mount = () => { $('#expPer').addEventListener('change', e => go('expenses', {key: e.target.value}, 'replace')); };
+ACT.editExpense = d => editExpense(d.id ? get('expenses', d.id) : {});
+function editExpense(e) {
+  const isNew = !e.id, ships = all('shipments').filter(x => x.status !== 'closed' || x.id === e.shipmentId);
+  e = {date: today(), venture: DEV.lastVenture || 'tlob', type: 'nz', category: '', amount: '', gst: '', ...e};
+  openSheet(`<h2>${isNew ? 'Add expense' : 'Edit expense'}</h2>
+   <div class="seg venture"><button data-v="tlob" class="${e.venture === 'tlob' ? 'on' : ''}" data-act="exV" data-val="tlob">tLOB</button><button data-v="bfs" class="${e.venture === 'bfs' ? 'on' : ''}" data-act="exV" data-val="bfs">Blaise</button></div>
+   <label class="f"><span>Date paid</span><input id="exDate" type="date" value="${e.date}"></label>
+   <label class="f"><span>Paid to</span><input id="exSupp" value="${esc(e.supplier || '')}" placeholder="e.g. Mitre 10, NZ Customs, Z Energy" autofocus></label>
+   <label class="f"><span>What it was for</span><input id="exDesc" value="${esc(e.desc || '')}"></label>
+   <label class="f"><span>Kind of payment</span><select id="exType">${Object.entries(EXP_TYPES).map(([k, t]) => `<option value="${k}" ${e.type === k ? 'selected' : ''}>${t.label}</option>`).join('')}</select>
+     <div class="hint" id="exHint">${EXP_TYPES[e.type].hint}</div></label>
+   <div class="grid2"><label class="f"><span id="exAmtLbl">${e.type === 'border' ? 'GST amount paid' : 'Amount paid'}</span><input id="exAmt" inputmode="decimal" value="${e.amount}"></label>
+   <label class="f"><span>GST to claim</span><input id="exGst" inputmode="decimal" value="${e.gst}"></label></div>
+   <label class="f"><span>Category</span><select id="exCat"><option value="">Choose…</option>${EXP_CATS.map(c => `<option ${e.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+   <label class="check"><input type="checkbox" id="exAsset" ${e.asset ? 'checked' : ''}><span>Asset that lasts years (e.g. a chipper). Your accountant depreciates it; the GST is still claimed now.</span></label>
+   ${ships.length ? `<label class="f"><span>Part of a shipment (optional)</span><select id="exShip"><option value="">No</option>${ships.map(x => `<option value="${x.id}" ${e.shipmentId === x.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select></label>` : ''}
+   <label class="f"><span>Receipt or invoice number (optional)</span><input id="exRef" value="${esc(e.ref || '')}"></label>
+   <div class="actions"><button class="btn primary wide" data-act="exSave">Save expense</button>
+   ${isNew ? '<button class="btn wide" data-act="exSaveMore">Save and add another from the same invoice</button>' : '<button class="btn danger wide" data-act="exDelete">Delete expense</button>'}</div>`, sh => {
+    let gstTouched = !isNew;
+    const recalc = () => { if (gstTouched) return; $('#exGst').value = num($('#exAmt').value) ? EXP_TYPES[$('#exType').value].gst(num($('#exAmt').value)).toFixed(2) : ''; };
+    $('#exAmt', sh).addEventListener('input', recalc);
+    $('#exGst', sh).addEventListener('input', () => gstTouched = true);
+    $('#exType', sh).addEventListener('change', ev => { const t = ev.target.value; $('#exHint').textContent = EXP_TYPES[t].hint; $('#exAmtLbl').textContent = t === 'border' ? 'GST amount paid' : 'Amount paid'; gstTouched = false; recalc(); });
+  });
+  let venture = e.venture;
+  ACT.exV = d => { venture = d.val; $$('.sheet .seg.venture button').forEach(b => b.classList.toggle('on', b.dataset.val === d.val)); };
+  const doSave = () => {
+    const amount = r2(num($('#exAmt').value)), date = $('#exDate').value || today();
+    if (!amount) { toast('Enter the amount paid.'); return null; }
+    if (!isNew && !confirmFiled(e.date)) return null;
+    if (!confirmFiled(date)) return null;
+    let gst = r2(num($('#exGst').value));
+    if (gst > amount) { toast('GST cannot be more than the amount paid.'); return null; }
+    DEV.lastVenture = venture; saveDev();
+    return put('expenses', {...e, venture, date, supplier: $('#exSupp').value.trim(), desc: $('#exDesc').value.trim(), type: $('#exType').value,
+      amount, gst, category: $('#exCat').value, asset: $('#exAsset').checked, shipmentId: ($('#exShip') || {}).value || '', ref: $('#exRef').value.trim()});
+  };
+  ACT.exSave = () => { if (doSave()) closeSheet(() => { toast('Expense saved'); render(); }); };
+  ACT.exSaveMore = () => { const r = doSave(); if (r) closeSheet(() => { toast('Saved. Add the next line.'); editExpense({date: r.date, venture: r.venture, supplier: r.supplier, shipmentId: r.shipmentId, ref: r.ref, type: r.type === 'border' ? 'duty' : 'border'}); }); };
+  ACT.exDelete = () => { if (!confirmFiled(e.date) || !confirm('Delete this expense?')) return; remove('expenses', e.id); closeSheet(() => { toast('Expense deleted'); render(); }); };
+}
+
+/* ---------- GST RETURN ---------- */
+VIEWS.gst = p => {
+  const periods = periodsList(), s = S();
+  const per = periods.find(x => x.key === p.key) || periods[0];
+  const r = gstReport(per), filed = s.filed[per.key], adj = s.gstAdjust[per.key] || {};
+  const box = (n, label, val, strong) => `<div class="kv${strong ? ' total' : ''}"><span><span class="n">${n}</span>${label}</span><b>${money(val)}</b></div>`;
+  return `<h2>GST return</h2><p class="sub">Two-monthly, cash basis, both ventures under one GST number.</p>
+  <label class="f"><span>Period</span><select id="gstPer">${periods.map(x => `<option value="${x.key}" ${x.key === per.key ? 'selected' : ''}>${x.label}${s.filed[x.key] ? ' (filed)' : ''}</option>`).join('')}</select></label>
+  <div class="card ${filed ? '' : 'note info'}"><p><b>${per.label}</b>: ${fmtDate(per.start)} to ${fmtDate(per.end)}. ${filed ? 'Marked as filed on ' + fmtDate(filed) + '.' : 'Due ' + fmtDate(per.due) + '.'}</p>
+    <button class="btn small" data-act="toggleFiled" data-key="${per.key}">${filed ? 'Mark as not filed' : 'Mark as filed'}</button></div>
+  <h3>Figures for myIR</h3>
+  <div class="card boxes">
+    ${box(5, 'Total sales and income (incl. GST)', r.box5)}
+    ${box(6, 'Zero-rated supplies', r.box6)}
+    ${box(7, 'Box 5 minus box 6', r.box7)}
+    ${box(8, 'GST on sales (box 7 × 3 ÷ 23)', r.box8)}
+    ${box(9, 'Debit adjustments', r.box9)}
+    ${box(10, 'Total GST collected', r.box10, true)}
+    ${box(11, 'Purchases and expenses (incl. GST)', r.box11)}
+    ${box(12, 'GST on purchases (box 11 × 3 ÷ 23)', r.box12)}
+    ${box(13, 'Credit adjustments', r.box13)}
+    ${box(14, 'Total GST credit', r.box14, true)}
+    <div class="kv total"><span><span class="n">15</span>${r.box15 >= 0 ? 'GST to pay' : 'GST refund due to you'}</span><b>${money(Math.abs(r.box15))}</b></div>
+  </div>
+  <p class="hint">Box 11 includes GST paid at the border at its GST-inclusive equivalent, so that box 12 equals the GST you actually paid. Overseas supplier invoices, duty and international freight are left out because they carry no NZ GST.</p>
+  <details><summary>Adjustments (boxes 9 and 13)</summary><div>
+    <p class="hint">Usually zero. Use these for things like private use of business goods, or anything your accountant tells you to adjust.</p>
+    <div class="grid2"><label class="f"><span>Debit adjustment (box 9)</span><input id="adjD" inputmode="decimal" value="${adj.debit || ''}"></label>
+    <label class="f"><span>Credit adjustment (box 13)</span><input id="adjC" inputmode="decimal" value="${adj.credit || ''}"></label></div>
+    <label class="f"><span>Note</span><input id="adjN" value="${esc(adj.note || '')}"></label>
+    <button class="btn small" data-act="saveAdj" data-key="${per.key}">Save adjustments</button></div></details>
+  <h3>By venture</h3>
+  <div class="card">${['tlob', 'bfs'].map(v => `<p style="margin:6px 0 2px">${ventureChip(v)}</p>
+    <div class="kv"><span>Money received</span><b>${money(r.by[v].sales)}</b></div><div class="kv"><span>GST in it</span><b>${money(r.by[v].gst)}</b></div><div class="kv"><span>GST claimed on expenses</span><b>${money(r.by[v].claim)}</b></div>`).join('')}</div>
+  ${r.gifts.length ? `<div class="card note"><p>${-sum(r.gifts, g => g.qty)} gifted cop${-sum(r.gifts, g => g.qty) === 1 ? 'y' : 'ies'} recorded this period. Ask your accountant once whether gifts from stock need a GST adjustment. If they do, enter it in box 9.</p></div>` : ''}
+  <details><summary>Payments received (${r.pays.length})</summary><div>${r.pays.sort((a, b) => a.date < b.date ? -1 : 1).map(x => `<div class="kv"><button class="linkish" data-act="openDoc" data-id="${x.doc.id}">${fmtDate(x.date)} ${esc(x.doc.number)}, ${esc(custName(x.doc.customerId, x.doc.customerName))}</button><b>${money(x.amount)}</b></div>`).join('') || '<p class="muted">None.</p>'}</div></details>
+  <details><summary>Expenses paid (${r.exps.length})</summary><div>${r.exps.sort((a, b) => a.date < b.date ? -1 : 1).map(e => `<div class="kv"><button class="linkish" data-act="editExpense" data-id="${e.id}">${fmtDate(e.date)} ${esc(e.supplier || e.desc)}</button><b>${money(e.amount)} <span class="muted">(${money(e.gst)})</span></b></div>`).join('') || '<p class="muted">None.</p>'}</div></details>
+  <div class="actions"><button class="btn" data-act="gstCsv" data-key="${per.key}">Download this period (CSV)</button></div>
+  <p class="hint">To file: sign in to myIR, open GST, choose this period and copy across boxes 5, 6, 9, 11 and 13. myIR works out the rest; check its totals match the ones above.</p>`;
+};
+VIEWS.gst.mount = () => { $('#gstPer').addEventListener('change', e => go('gst', {key: e.target.value}, 'replace')); };
+ACT.toggleFiled = d => {
+  const s = S(), filed = {...s.filed};
+  if (filed[d.key]) { if (!confirm('Mark this period as not filed?')) return; delete filed[d.key]; } else filed[d.key] = today();
+  saveSettings({filed}); render();
+};
+ACT.saveAdj = d => {
+  const g = {...S().gstAdjust}; g[d.key] = {debit: r2(num($('#adjD').value)), credit: r2(num($('#adjC').value)), note: $('#adjN').value.trim()};
+  saveSettings({gstAdjust: g}); toast('Adjustments saved'); render();
+};
+ACT.gstCsv = d => {
+  const per = periodsList().find(x => x.key === d.key), r = gstReport(per);
+  const rows = [['Type', 'Date', 'Venture', 'Reference', 'Party', 'Details', 'Amount incl GST', 'GST']];
+  r.pays.forEach(x => { const t = docTotals(x.doc), g = t.total ? r2(t.gst * x.amount / t.total) : 0; rows.push(['Payment received', x.date, vShort(x.doc.venture), x.doc.number, custName(x.doc.customerId, x.doc.customerName), x.method || '', x.amount, g]); });
+  r.exps.forEach(e => rows.push(['Expense paid', e.date, vShort(e.venture), e.ref || '', e.supplier || '', [EXP_TYPES[e.type] ? EXP_TYPES[e.type].label : '', e.category, e.desc].filter(Boolean).join(' / '), e.amount, e.gst]));
+  rows.push([], ['Box 5', r.box5], ['Box 6', r.box6], ['Box 8', r.box8], ['Box 9', r.box9], ['Box 10', r.box10], ['Box 11', r.box11], ['Box 12', r.box12], ['Box 13', r.box13], ['Box 14', r.box14], ['Box 15', r.box15]);
+  download('GST ' + per.label.replace(/[^\w]+/g, '-') + '.csv', toCSV(rows));
+};
+
+/* ---------- MORE ---------- */
+VIEWS.more = () => `<h2>More</h2><div class="list">
+  ${[['items', 'Stock list', 'Books and items with prices'], ['expenses', 'Expenses', 'Purchases, imports and costs'], ['gst', 'GST returns', 'Two-monthly figures for myIR'],
+     ['settings', 'Settings', 'Business details, sync, printer and backup']].map(([v, t, s]) => `<button class="row" data-act="go" data-view="${v}"><span class="main"><span class="t">${t}</span><span class="s">${s}</span></span></button>`).join('')}
+  </div><p class="hint" style="text-align:center">Field &amp; Folio ${APP_VERSION}</p>`;
+
+/* ---------- SETTINGS ---------- */
+VIEWS.settings = () => {
+  const s = S(), f = (id, label, val, attrs) => `<label class="f"><span>${label}</span><input id="${id}" value="${esc(val ?? '')}" ${attrs || ''}></label>`;
+  const vent = v => { const x = s.ventures[v]; return `<details><summary>${esc(x.name)}</summary><div>
+    ${f('s_' + v + '_name', 'Name on documents', x.name)}${f('s_' + v + '_short', 'Invoice number prefix', x.short, 'maxlength="6"')}
+    <div class="grid2">${f('s_' + v + '_phone', 'Phone', x.phone, 'type="tel"')}${f('s_' + v + '_email', 'Email (replies go here)', x.email, 'type="email"')}</div>
+    <label class="f"><span>Address</span><textarea id="s_${v}_address" rows="2">${esc(x.address)}</textarea></label>
+    ${f('s_' + v + '_footer', 'Thank-you line on receipts', x.footer)}
+    <label class="check"><input type="checkbox" id="s_${v}_excl" ${x.excl ? 'checked' : ''}><span>Enter prices plus GST by default (common for trade customers)</span></label></div></details>`; };
+  return `<h2>Settings</h2>
+  <h3>Business</h3><div class="card">
+    ${f('s_owner', 'Your name', s.ownerName)}${f('s_gst', 'GST number', s.gstNumber, 'inputmode="numeric" placeholder="123-456-789"')}
+    <div class="grid2">${f('s_bank', 'Bank account', s.bankAccount, 'placeholder="12-3456-7890123-00"')}${f('s_bankname', 'Bank name (optional)', s.bankName)}</div>
+    <label class="f"><span>GST periods end in</span><select id="s_cycle"><option value="odd" ${s.gstCycle === 'odd' ? 'selected' : ''}>Odd months (Jan, Mar, May, Jul, Sep, Nov)</option><option value="even" ${s.gstCycle === 'even' ? 'selected' : ''}>Even months (Feb, Apr, Jun, Aug, Oct, Dec)</option></select></label>
+    ${f('s_start', 'Records in this app start on', s.startDate, 'type="date"')}
+  </div>
+  ${vent('tlob')}${vent('bfs')}
+  <details><summary>Blaise rates and terms</summary><div>
+    <div class="grid2">${f('s_labour', 'Labour per hour (incl. GST)', s.labourRate || '', 'inputmode="decimal"')}${f('s_travel', 'Travel per km (incl. GST)', s.travelRate || '', 'inputmode="decimal"')}</div>
+    <div class="grid3">${f('s_markup', 'Materials markup %', s.markup, 'inputmode="decimal"')}${f('s_terms', 'Invoice due (days)', s.terms, 'inputmode="numeric"')}${f('s_qdays', 'Quotes valid (days)', s.quoteDays, 'inputmode="numeric"')}</div></div></details>
+  <div class="actions"><button class="btn primary wide" data-act="saveSettings">Save business settings</button></div>
+
+  <h3>Google Sheet sync and email</h3><div class="card">
+    <p class="hint" style="margin-top:0">Set up once per device. The setup guide explains where to find these.</p>
+    ${f('d_url', 'Web app address', DEV.syncUrl, 'placeholder="https://script.google.com/macros/s/…/exec"')}
+    ${f('d_token', 'Access code', DEV.token)}
+    <div class="actions" style="margin-bottom:0"><button class="btn primary" data-act="saveSync">Save and test</button><button class="btn" data-act="syncNow">Sync now</button></div>
+    <p class="hint">${DB.meta.lastSyncAt ? 'Last synced ' + new Date(DB.meta.lastSyncAt).toLocaleString('en-NZ') + '. ' : ''}${Object.keys(DB.meta.dirty).length} change(s) waiting to upload.</p>
+  </div>
+
+  <h3>Printer</h3><div class="card">
+    <p style="margin-top:0">Status: <b id="printerStatus">${Printer.connected ? 'Connected to ' + esc(Printer.device.name) : 'Not connected'}</b></p>
+    <label class="f"><span>Darkness</span><input id="d_energy" type="range" min="4000" max="40000" step="1000" value="${DEV.energy}"></label>
+    <div class="actions" style="margin-bottom:0"><button class="btn primary" data-act="printerConnect">${Printer.connected ? 'Reconnect' : 'Connect printer'}</button><button class="btn" data-act="printerTest">Test print</button>
+    ${Printer.connected ? '<button class="btn" data-act="printerOff">Disconnect</button>' : ''}</div>
+    <p class="hint">Turn the MX06 on, then tap Connect and choose it from the list. If printing stops partway, set Packet size to 20.</p>
+    <details style="margin:8px 0 0"><summary>Advanced</summary><div><div class="grid2">
+      <label class="f"><span>Packet size (bytes)</span><input id="d_chunk" inputmode="numeric" value="${DEV.chunk}"></label>
+      <label class="f"><span>Pause between packets (ms)</span><input id="d_delay" inputmode="numeric" value="${DEV.delay}"></label></div>
+      <button class="btn small" data-act="savePrinterAdv">Save</button></div></details>
+  </div>
+
+  <h3>Backup</h3><div class="card">
+    <p class="hint" style="margin-top:0">Your Google Sheet is the main backup. These downloads are extra copies, or a way to move records by hand.</p>
+    <div class="actions" style="margin-bottom:0"><button class="btn" data-act="exportJson">Download full backup</button><button class="btn" data-act="importJson">Restore from backup</button>
+    <button class="btn" data-act="exportCsv">Download spreadsheets (CSV)</button></div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>`;
+};
+VIEWS.settings.mount = () => {
+  $('#d_energy').addEventListener('change', e => { DEV.energy = +e.target.value; saveDev(); toast('Darkness saved'); });
+  $('#importFile').addEventListener('change', importBackup);
+};
+ACT.saveSettings = () => {
+  const s = S(), v = k => ($('#' + k) || {}).value;
+  const ventures = {};
+  ['tlob', 'bfs'].forEach(x => ventures[x] = {...s.ventures[x], name: v('s_' + x + '_name').trim() || s.ventures[x].name, short: (v('s_' + x + '_short').trim() || s.ventures[x].short).toUpperCase(),
+    phone: v('s_' + x + '_phone').trim(), email: v('s_' + x + '_email').trim(), address: v('s_' + x + '_address').trim(), footer: v('s_' + x + '_footer').trim(), excl: $('#s_' + x + '_excl').checked});
+  saveSettings({ownerName: v('s_owner').trim(), gstNumber: v('s_gst').trim(), bankAccount: v('s_bank').trim(), bankName: v('s_bankname').trim(),
+    gstCycle: v('s_cycle'), startDate: v('s_start') || s.startDate, ventures,
+    labourRate: r2(num(v('s_labour'))), travelRate: r2(num(v('s_travel'))), markup: num(v('s_markup')), terms: Math.round(num(v('s_terms'))) || 14, quoteDays: Math.round(num(v('s_qdays'))) || 30});
+  toast('Settings saved');
+};
+ACT.saveSync = async () => {
+  DEV.syncUrl = $('#d_url').value.trim(); DEV.token = $('#d_token').value.trim(); saveDev();
+  if (!DEV.syncUrl) { setSync('off'); return toast('Sync turned off. Records stay on this device.'); }
+  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(DEV.syncUrl)) return toast('That does not look like an Apps Script web app address.');
+  try { const j = await api('ping'); toast('Connected to ' + (j.email || 'your Google account')); await sync(false); render(); }
+  catch (e) { setSync('err', e.message); toast('Could not connect: ' + e.message); }
+};
+ACT.printerConnect = async () => {
+  try { if (Printer.device) Printer.disconnect(); await Printer.connect(); toast('Printer connected'); render(); }
+  catch (e) { toast(e.name === 'NotFoundError' ? 'No printer chosen.' : 'Could not connect: ' + e.message); }
+};
+ACT.printerOff = () => { Printer.disconnect(); render(); };
+ACT.printerTest = () => printPreview('Test print', [{text: 'Field & Folio', size: 34, align: 'center'}, {rule: 1}, {text: 'Printer test', size: 24, align: 'center'},
+  {text: new Date().toLocaleString('en-NZ'), size: 20, align: 'center', bold: false}, {gap: 6}, {text: 'Small text for detail lines', size: 18, bold: false},
+  {text: 'Normal text for item names', size: 22}, {text: 'Big text for names', size: 40}, {cols: ['Line with amount', '$55.00'], size: 22}, {gap: 10}]);
+ACT.savePrinterAdv = () => { DEV.chunk = Math.max(20, Math.round(num($('#d_chunk').value)) || 180); DEV.delay = Math.max(0, Math.round(num($('#d_delay').value))); saveDev(); toast('Saved'); };
+ACT.exportJson = () => download('field-and-folio-backup-' + today() + '.json', JSON.stringify({app: 'field-and-folio', version: APP_VERSION, exported: new Date().toISOString(), data: DB.data}), 'application/json');
+ACT.importJson = () => $('#importFile').click();
+function importBackup(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const j = JSON.parse(rd.result); if (!j.data) throw new Error('Not a Field & Folio backup');
+      let n = 0;
+      COLLS.forEach(c => Object.values(j.data[c] || {}).forEach(r => {
+        const cur = DB.data[c][r.id];
+        if (!cur || (r.updatedAt || 0) > (cur.updatedAt || 0)) { DB.data[c][r.id] = r; DB.meta.dirty[c + '|' + r.id] = 1; n++; }
+      }));
+      save(); queueSync(); toast(n + ' records restored'); render();
+    } catch (err) { toast('Could not restore: ' + err.message); }
+  };
+  rd.readAsText(file);
+}
+ACT.exportCsv = () => {
+  const cust = [['Name', 'Phone', 'Email', 'Parish', 'Usual delivery', 'Address', 'Notes']].concat(all('customers').map(c => [c.name, c.phone, c.email, c.parish, c.delivery, c.address, c.notes]));
+  const docs = [['Number', 'Type', 'Venture', 'Date', 'Customer', 'Total', 'GST', 'Paid', 'Balance', 'Status']].concat(all('docs').map(d => { const t = docTotals(d); return [d.number, d.type, vShort(d.venture), d.date, custName(d.customerId, d.customerName), t.total, t.gst, docPaid(d), docBalance(d), docStatus(d).t]; }));
+  const exps = [['Date', 'Venture', 'Paid to', 'Details', 'Kind', 'Category', 'Amount', 'GST', 'Asset', 'Reference']].concat(all('expenses').map(e => [e.date, vShort(e.venture), e.supplier, e.desc, (EXP_TYPES[e.type] || {}).label, e.category, e.amount, e.gst, e.asset ? 'Yes' : '', e.ref]));
+  download('customers-' + today() + '.csv', toCSV(cust));
+  setTimeout(() => download('sales-' + today() + '.csv', toCSV(docs)), 400);
+  setTimeout(() => download('expenses-' + today() + '.csv', toCSV(exps)), 800);
+};
+
+/* ---------- START ---------- */
+function start() {
+  load();
+  history.replaceState({view: 'home', p: {}}, '');
+  render();
+  setSync(DEV.syncUrl ? 'ok' : 'off');
+  if (DEV.syncUrl) sync(false);
+  setInterval(() => { if (DEV.syncUrl && document.visibilityState === 'visible') sync(false); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') queueSync(); });
+  window.addEventListener('online', () => queueSync());
+  window.addEventListener('beforeunload', e => { if (state.view === 'edit' && state.draft && state.draft.lines.length) { e.preventDefault(); e.returnValue = ''; } });
+}
+start();
+</script>
+</body>
+</html>
