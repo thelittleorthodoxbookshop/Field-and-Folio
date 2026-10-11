@@ -223,7 +223,7 @@ function defaultSettings() {
   return {
     id: 'main', ownerName: '', gstNumber: '', bankAccount: '', bankName: '',
     gstCycle: 'odd', startDate: '2026-10-01',
-    labourRate: 0, travelRate: 0, markup: 20, terms: 14, quoteDays: 30,
+    labourRate: 0, travelRate: 0, markup: 20, terms: 14, quoteDays: 30, greeting: 'Hello', signoff: 'Kind regards',
     ventures: {
       tlob: {name: 'The Little Orthodox Bookshop', short: 'TLOB', email: '', phone: '', address: '', excl: false,
              footer: 'Thank you for your order.'},
@@ -240,6 +240,8 @@ function S() {
     filed: {...(s.filed || {})}, gstAdjust: {...(s.gstAdjust || {})}};
 }
 function saveSettings(patch) { put('settings', {...S(), ...patch, id: 'main'}); }
+const greet = name => { const g = (S().greeting || 'Hello').trim(); return name ? g + ' ' + name : g; };
+const signOff = () => (S().signoff || 'Kind regards').trim();
 const vName = v => S().ventures[v] ? S().ventures[v].name : v;
 const vShort = v => v === 'bfs' ? 'Blaise' : 'tLOB';
 
@@ -975,10 +977,10 @@ ACT.emailDoc = d => {
   const doc = get('docs', d.id), c = get('customers', doc.customerId), v = S().ventures[doc.venture], t = docTotals(doc), bal = docBalance(doc);
   const first = c ? c.name.split(' ')[0] : '';
   const kind = doc.type === 'quote' ? 'quote' : bal <= 0.005 ? 'receipt' : 'invoice';
-  const message = `Kia ora${first ? ' ' + first : ''},\n\n` + (kind === 'quote' ? `Please find our quote ${doc.number} for ${money(t.total)} attached. It is valid until ${fmtDate(doc.validUntil)}.`
+  const message = greet(first) + ',\n\n' + (kind === 'quote' ? `Please find our quote ${doc.number} for ${money(t.total)} attached. It is valid until ${fmtDate(doc.validUntil)}.`
     : kind === 'receipt' ? `Thank you for your payment. Your receipt ${doc.number} for ${money(t.total)} is attached.`
     : `Please find invoice ${doc.number} for ${money(t.total)} attached${doc.due ? ', due ' + fmtDate(doc.due) : ''}.` + (S().bankAccount ? `\n\nYou can pay by bank transfer to ${S().bankAccount} using ${doc.number} as the reference.` : ''))
-    + `\n\nNgā mihi,\n${S().ownerName || v.name}\n${v.name}`;
+    + `\n\n${signOff()},\n${S().ownerName || v.name}\n${v.name}`;
   emailSheet({heading: 'Email ' + kind, to: c ? c.email : '', subject: `${v.name}: ${kind} ${doc.number}`, message, inner: docInner(doc), filename: doc.number,
     fromName: v.name, replyTo: v.email, text: `${docTitle(doc)} ${doc.number}\nTotal ${money(t.total)}` + (bal > 0.005 ? `\nOwing ${money(bal)}` : ''),
     onSent: to => put('docs', {...get('docs', doc.id), emailedAt: Date.now(), emailedTo: to})});
@@ -1447,7 +1449,7 @@ ACT.editCustomer = () => customerSheet(get('customers', state.p.id));
 ACT.statement = d => {
   const c = get('customers', state.p.id), v = S().ventures[d.v], inner = statementInner(c, d.v);
   emailSheet({heading: 'Email statement', to: c.email, subject: v.name + ': statement for ' + c.name, inner, filename: 'Statement ' + c.name, fromName: v.name, replyTo: v.email,
-    message: `Kia ora ${c.name.split(' ')[0]},\n\nHere is your statement from ${v.name}. Please get in touch if anything looks wrong.\n\nNgā mihi,\n${S().ownerName || v.name}`,
+    message: `${greet(c.name.split(' ')[0])},\n\nHere is your statement from ${v.name}. Please get in touch if anything looks wrong.\n\n${signOff()},\n${S().ownerName || v.name}`,
     text: 'Statement attached.'});
 };
 
@@ -1668,22 +1670,22 @@ ACT.shareDoc = d => {
   const doc = get('docs', d.id), c = get('customers', doc.customerId), s = S(), v = s.ventures[doc.venture], t = docTotals(doc), bal = docBalance(doc);
   const first = c ? c.name.split(' ')[0] : '';
   const kind = doc.type === 'quote' ? 'quote' : bal <= 0.005 ? 'receipt' : 'invoice';
-  let msg = `Kia ora${first ? ' ' + first : ''}, `;
+  let msg = greet(first) + ', ';
   if (kind === 'quote') msg += `here is our quote ${doc.number} for ${money(t.total)}${doc.validUntil ? ', valid until ' + fmtDate(doc.validUntil) : ''}.`;
   else if (kind === 'receipt') msg += `thank you for your payment. Here is your receipt ${doc.number} for ${money(t.total)}.`;
   else {
     msg += `here is invoice ${doc.number} for ${money(t.total)}` + (bal < t.total ? ` (${money(bal)} still owing)` : '') + (doc.due ? `, due ${fmtDate(doc.due)}` : '') + '.';
     if (s.bankAccount) msg += `\n\nBank transfer to ${s.bankAccount}${s.ownerName ? ' (' + s.ownerName + ')' : ''}, reference ${doc.number}.`;
   }
-  msg += `\n\nNgā mihi,\n${s.ownerName || v.name}, ${v.name}`;
+  msg += `\n\n${signOff()},\n${s.ownerName || v.name}, ${v.name}`;
   shareSheet({heading: 'Share ' + kind, message: msg, blocks: a4DocBlocks(doc), filename: doc.number, phone: c ? c.phone : '',
     onShared: via => put('docs', {...get('docs', doc.id), sharedAt: Date.now(), sharedVia: via})});
 };
 ACT.shareStatement = d => {
   const c = get('customers', state.p.id), s = S(), v = s.ventures[d.v];
   const owing = sum(all('docs').filter(x => x.customerId === c.id && x.venture === d.v), docBalance);
-  const msg = `Kia ora ${c.name.split(' ')[0]}, here is your statement from ${v.name}. The total owing is ${money(owing)}.` +
-    (s.bankAccount ? `\n\nBank transfer to ${s.bankAccount}, with the invoice number as the reference.` : '') + `\n\nNgā mihi,\n${s.ownerName || v.name}`;
+  const msg = `${greet(c.name.split(' ')[0])}, here is your statement from ${v.name}. The total owing is ${money(owing)}.` +
+    (s.bankAccount ? `\n\nBank transfer to ${s.bankAccount}, with the invoice number as the reference.` : '') + `\n\n${signOff()},\n${s.ownerName || v.name}`;
   shareSheet({heading: 'Share statement', message: msg, blocks: a4StatementBlocks(c, d.v), filename: 'Statement ' + c.name, phone: c.phone});
 };
 
@@ -1767,6 +1769,8 @@ VIEWS.settings = () => {
     <div class="grid2">${f('s_bank', 'Bank account', s.bankAccount, 'placeholder="12-3456-7890123-00"')}${f('s_bankname', 'Bank name (optional)', s.bankName)}</div>
     <label class="f"><span>GST periods end in</span><select id="s_cycle"><option value="odd" ${s.gstCycle === 'odd' ? 'selected' : ''}>Odd months (Jan, Mar, May, Jul, Sep, Nov)</option><option value="even" ${s.gstCycle === 'even' ? 'selected' : ''}>Even months (Feb, Apr, Jun, Aug, Oct, Dec)</option></select></label>
     ${f('s_start', 'Records in this app start on', s.startDate, 'type="date"')}
+    <div class="grid2">${f('s_greet', 'Messages start with', s.greeting, 'placeholder="Hello"')}${f('s_signoff', 'Messages end with', s.signoff, 'placeholder="Kind regards"')}</div>
+    <p class="hint" style="margin-top:-6px">Used in emails and WhatsApp messages, e.g. "Hello Maria," and "Kind regards,". You can still edit each message before sending.</p>
   </div>
   ${vent('tlob')}${vent('bfs')}
   <details><summary>Blaise rates and terms</summary><div>
@@ -1811,7 +1815,7 @@ ACT.saveSettings = () => {
   ['tlob', 'bfs'].forEach(x => ventures[x] = {...s.ventures[x], name: v('s_' + x + '_name').trim() || s.ventures[x].name, short: (v('s_' + x + '_short').trim() || s.ventures[x].short).toUpperCase(),
     phone: v('s_' + x + '_phone').trim(), email: v('s_' + x + '_email').trim(), address: v('s_' + x + '_address').trim(), footer: v('s_' + x + '_footer').trim(), excl: $('#s_' + x + '_excl').checked});
   saveSettings({ownerName: v('s_owner').trim(), gstNumber: v('s_gst').trim(), bankAccount: v('s_bank').trim(), bankName: v('s_bankname').trim(),
-    gstCycle: v('s_cycle'), startDate: v('s_start') || s.startDate, ventures,
+    gstCycle: v('s_cycle'), startDate: v('s_start') || s.startDate, ventures, greeting: v('s_greet').trim() || 'Hello', signoff: v('s_signoff').trim() || 'Kind regards',
     labourRate: r2(num(v('s_labour'))), travelRate: r2(num(v('s_travel'))), markup: num(v('s_markup')), terms: Math.round(num(v('s_terms'))) || 14, quoteDays: Math.round(num(v('s_qdays'))) || 30});
   toast('Settings saved');
 };
