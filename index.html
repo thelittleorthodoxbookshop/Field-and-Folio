@@ -165,9 +165,9 @@ details>div{padding:0 14px 14px}
    Field & Folio — sales, GST and CRM for Blaise Field Services
    and The Little Orthodox Bookshop. Version 1.0
    ========================================================= */
-const APP_VERSION = '1.3';
+const APP_VERSION = '1.4';
 const LS_KEY = 'ff.data.v1', LS_DEV = 'ff.device.v1';
-const COLLS = ['settings','customers','items','docs','payments','expenses','shipments','preorders','moves'];
+const COLLS = ['settings','customers','items','docs','payments','expenses','shipments','preorders','moves','news'];
 const GST_RATE = 0.15;
 
 /* ---------- small utilities ---------- */
@@ -1248,7 +1248,7 @@ VIEWS.shipment = p => {
   </div>
   <div class="actions">${next}<button class="btn" data-act="addPreorder">Add pre-order</button><button class="btn" data-act="shipLabels">Print all labels</button>
     <button class="btn" data-act="shipInvoiceAll">Invoice all waiting</button><button class="btn" data-act="shipGift">Record a gift</button>
-    <button class="btn" data-act="shipCost">Add a cost</button><button class="btn" data-act="editShipment">Edit details</button></div>
+    <button class="btn" data-act="openNews" data-ship="${sh.id}">Announce</button><button class="btn" data-act="shipCost">Add a cost</button><button class="btn" data-act="editShipment">Edit details</button></div>
   <h3>Pre-orders</h3>${preRows ? `<div class="list">${preRows}</div>` : '<div class="card empty">No pre-orders yet. Add names as they come in from WhatsApp and Facebook.</div>'}
   <h3>Money</h3><div class="card">
     <div class="kv"><span>Costs (excl. claimable GST)</span><b>${money(st.costNet)}</b></div>
@@ -1399,7 +1399,9 @@ function customerFields(c) {
   <label class="f"><span>Parish or church (optional)</span><input id="cuParish" value="${esc(c.parish || '')}"></label>
   <label class="f"><span>Usual delivery (fills in their labels)</span><input id="cuDel" value="${esc(c.delivery || '')}" placeholder="e.g. At church on Sunday"></label>
   <label class="f"><span>Postal or site address (optional)</span><textarea id="cuAddr" rows="2">${esc(c.address || '')}</textarea></label>
-  <label class="f"><span>Notes (optional)</span><textarea id="cuNotes" rows="2">${esc(c.notes || '')}</textarea></label>`;
+  <label class="f"><span>Notes (optional)</span><textarea id="cuNotes" rows="2">${esc(c.notes || '')}</textarea></label>
+  <label class="check"><input type="checkbox" id="cuNews" ${c.news ? 'checked' : ''}><span>Happy to receive news about new books, pre-orders and stock</span></label>
+  <label class="check"><input type="checkbox" id="cuUnsub" ${c.unsub ? 'checked' : ''}><span>Unsubscribed: never send announcements${c.unsub ? ' (since ' + fmtDate(c.unsub) + ')' : ''}</span></label>`;
 }
 function readCustomer(existing) {
   const name = $('#cuName').value.trim();
@@ -1407,7 +1409,8 @@ function readCustomer(existing) {
   const email = $('#cuEmail').value.trim();
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('That email address does not look right.'); return null; }
   return put('customers', {...(existing || {}), name, phone: $('#cuPhone').value.trim(), email, parish: $('#cuParish').value.trim(),
-    delivery: $('#cuDel').value.trim(), address: $('#cuAddr').value.trim(), notes: $('#cuNotes').value.trim()});
+    delivery: $('#cuDel').value.trim(), address: $('#cuAddr').value.trim(), notes: $('#cuNotes').value.trim(),
+    news: $('#cuUnsub').checked ? false : $('#cuNews').checked, unsub: $('#cuUnsub').checked ? ((existing && existing.unsub) || today()) : ''});
 }
 function customerSheet(c, after) {
   openSheet(`<h2>${c ? 'Edit customer' : 'New customer'}</h2>${customerFields(c)}
@@ -1434,6 +1437,7 @@ VIEWS.customer = p => {
     ${c.email ? `<div class="kv"><span>Email</span><b style="word-break:break-all">${esc(c.email)}</b></div>` : ''}
     ${c.address ? `<div class="kv"><span>Address</span><b style="text-align:right">${esc(c.address)}</b></div>` : ''}
     <div class="kv"><span>Total bought</span><b>${money(spent)}</b></div>
+    <div class="kv"><span>Announcements</span><b>${c.unsub ? 'Unsubscribed' : c.news ? 'Happy to receive' : 'Not asked yet'}</b></div>
     ${owe.tlob ? `<div class="kv"><span>Owing to tLOB</span><b>${money(owe.tlob)}</b></div>` : ''}
     ${owe.bfs ? `<div class="kv"><span>Owing to Blaise</span><b>${money(owe.bfs)}</b></div>` : ''}
     ${c.notes ? `<p class="hint" style="margin-top:8px">${esc(c.notes)}</p>` : ''}
@@ -1694,6 +1698,179 @@ ACT.shareStatement = d => {
   shareSheet({heading: 'Share statement', message: msg, blocks: a4StatementBlocks(c, d.v), filename: 'Statement ' + c.name, phone: c.phone});
 };
 
+/* ---------- ANNOUNCEMENTS: news to customers by email or WhatsApp ---------- */
+let newsDraft = null, newsSending = false, newsStop = false;
+const validEmail = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || '').trim());
+const firstName = c => (c && c.name ? c.name.trim().split(/\s+/)[0] : '');
+function newsTemplate(kind, sh, venture) {
+  const s = S(), v = s.ventures[venture], sig = `\n\n${signOff()},\n${s.ownerName || v.name}\n${v.name}`;
+  const hi = (s.greeting || 'Hello') + ' {first},\n\n';
+  if (kind === 'preorder' && sh) return {subject: 'Pre-orders open: ' + sh.title,
+    body: hi + `We're bringing in copies of ${sh.title}, ${money(sh.price)} each.\n\nIf you'd like a copy, just reply and we'll put your name down. We'll let you know as soon as they arrive.` + sig};
+  if (kind === 'instock' && sh) return {subject: 'Now in stock: ' + sh.title,
+    body: hi + `Copies of ${sh.title} have arrived, ${money(sh.price)} each, and we have a few spare.\n\nIf you'd like one, just reply and we'll set it aside for you.` + sig};
+  return {subject: '', body: hi + sig.trimStart()};
+}
+function newsEligible(d) {
+  const boughtFrom = new Set();
+  all('docs').forEach(x => { if (x.venture === d.venture && x.customerId) boughtFrom.add(x.customerId); });
+  if (d.venture === 'tlob') all('preorders').forEach(x => boughtFrom.add(x.customerId));
+  return all('customers').filter(c => !c.unsub && (d.channel === 'email' ? validEmail(c.email) : !!(c.phone || '').replace(/\D/g, '')))
+    .filter(c => !d.onlyBuyers || boughtFrom.has(c.id))
+    .sort((a, b) => (b.news ? 1 : 0) - (a.news ? 1 : 0) || a.name.localeCompare(b.name));
+}
+function newsResetSelection(d) { d.selected = newsEligible(d).filter(c => c.news).map(c => c.id); }
+function personalise(text, c) { const f = firstName(c); return text.replace(/\{first\}/g, f || 'there').replace(/\{name\}/g, (c && c.name) || ''); }
+function newsEmailHTML(body, venture) {
+  const v = S().ventures[venture], col = ventureColour(venture);
+  const paras = esc(body).split(/\n{2,}/).map(p => `<p style="margin:0 0 14px">${p.replace(/\n/g, '<br>')}</p>`).join('');
+  const addr = (v.address || '').split(/\s*\n\s*/).filter(Boolean).join(', ');
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:600px">
+    <div style="font-family:Georgia,serif;font-size:21px;font-weight:bold;color:${col};margin-bottom:6px">${esc(v.name)}</div>
+    <div style="border-top:3px solid ${col};margin:0 0 18px"></div>${paras}
+    <div style="border-top:1px solid #ddd;margin-top:22px;padding-top:10px;font-size:12px;color:#777">
+    You are receiving this because you are a customer of ${esc(v.name)}${addr ? ', ' + esc(addr) : ''}. To stop these emails, simply reply with “unsubscribe”.</div></div>`;
+}
+const newsFooterText = venture => `\n\n--\nYou are receiving this because you are a customer of ${vName(venture)}. To stop these messages, reply "unsubscribe".`;
+
+VIEWS.news = p => {
+  if (!newsDraft || p.ship) {
+    const sh = p.ship && get('shipments', p.ship);
+    const t = newsTemplate(sh ? (sh.status === 'arrived' ? 'instock' : 'preorder') : 'blank', sh, 'tlob');
+    newsDraft = {venture: 'tlob', channel: 'email', onlyBuyers: false, subject: t.subject, body: t.body, shipmentId: sh ? sh.id : '', sent: {}};
+    newsResetSelection(newsDraft);
+    if (p.ship) history.replaceState({view: 'news', p: {}}, '');
+  }
+  const d = newsDraft, elig = newsEligible(d), sel = new Set(d.selected.filter(id => elig.some(c => c.id === id)));
+  d.selected = [...sel];
+  theme(d.venture);
+  const ships = all('shipments').filter(x => x.status !== 'closed');
+  const unsubCount = all('customers').filter(c => c.unsub).length;
+  const quota = DEV.mailQuota && DEV.mailQuota.day === today() ? DEV.mailQuota.left : null;
+  const past = all('news').sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
+  const rows = elig.map(c => {
+    const on = sel.has(c.id), sent = d.sent[c.id];
+    return `<div class="row"><label class="check" style="margin:0;flex:1;min-width:0"><input type="checkbox" data-news-pick="${c.id}" ${on ? 'checked' : ''}>
+      <span class="main"><span class="t">${esc(c.name)} ${c.news ? '<span class="chip paid">Said yes</span>' : ''} ${sent ? '<span class="chip quote">Sent</span>' : ''}</span>
+      <span class="s">${esc(d.channel === 'email' ? c.email : c.phone)}</span></span></label>
+      ${d.channel === 'whatsapp' ? `<button class="btn small" data-act="newsWa" data-id="${c.id}">WhatsApp</button>` : ''}</div>`;
+  }).join('');
+  return `<h2>Announcements</h2><p class="sub">Tell customers about new titles, pre-orders and stock. Everyone gets their own message.</p>
+  <div class="seg venture"><button data-v="tlob" class="${d.venture === 'tlob' ? 'on' : ''}" data-act="newsSet" data-k="venture" data-val="tlob">tLOB</button><button data-v="bfs" class="${d.venture === 'bfs' ? 'on' : ''}" data-act="newsSet" data-k="venture" data-val="bfs">Blaise</button></div>
+  <div class="seg"><button class="${d.channel === 'email' ? 'on' : ''}" data-act="newsSet" data-k="channel" data-val="email">Email</button><button class="${d.channel === 'whatsapp' ? 'on' : ''}" data-act="newsSet" data-k="channel" data-val="whatsapp">WhatsApp</button></div>
+  ${ships.length && d.venture === 'tlob' ? `<div class="card"><label class="f"><span>Start from a shipment (optional)</span><select id="newsShip"><option value="">Choose a shipment…</option>${ships.map(x => `<option value="${x.id}" ${d.shipmentId === x.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select></label>
+    <div class="pill-row" style="margin:0"><button class="btn" data-act="newsTpl" data-kind="preorder">Pre-orders open wording</button><button class="btn" data-act="newsTpl" data-kind="instock">Now in stock wording</button></div></div>` : ''}
+  ${d.channel === 'email' ? `<label class="f"><span>Subject</span><input id="newsSubj" value="${esc(d.subject)}" placeholder="e.g. New title coming: …"></label>` : ''}
+  <label class="f"><span>Message</span><textarea id="newsBody" rows="10">${esc(d.body)}</textarea>
+    <span class="hint">{first} becomes each person's first name. ${d.channel === 'email' ? 'An opt-out line is added at the bottom automatically.' : 'A short opt-out line is added at the end.'}</span></label>
+  <div class="section-title"><h3>Who gets it (${sel.size} of ${elig.length})</h3><button class="linkish" data-act="newsAll">${sel.size === elig.length ? 'Select none' : 'Select all'}</button></div>
+  <label class="check"><input type="checkbox" id="newsBuyers" ${d.onlyBuyers ? 'checked' : ''}><span>Only people who have bought from or pre-ordered with ${vShort(d.venture)}</span></label>
+  <p class="hint">People marked “Said yes” are ticked to start with. Tick others only if you’re confident they’re happy to hear from you.${unsubCount ? ' ' + unsubCount + ' unsubscribed customer(s) are left out automatically.' : ''}</p>
+  ${elig.length ? `<div class="list">${rows}</div>` : `<div class="card empty">No customers with ${d.channel === 'email' ? 'an email address' : 'a phone number'} yet.</div>`}
+  <div class="actions">
+    ${d.channel === 'email' ? `<button class="btn primary wide" data-act="newsSend" id="newsSendBtn" ${sel.size && DEV.syncUrl ? '' : 'disabled'}>Send email to ${sel.size} ${sel.size === 1 ? 'person' : 'people'}</button>`
+      : `<button class="btn primary wide" data-act="newsCopy">Copy message</button>`}
+    <button class="btn" data-act="newsVcf">Download contacts (.vcf)</button><button class="btn" data-act="newsCsv">Download list (CSV)</button>
+  </div>
+  ${d.channel === 'email' && !DEV.syncUrl ? '<p class="hint">Connect the Google Sheet in Settings to send email.</p>' : ''}
+  ${d.channel === 'email' && quota !== null ? `<p class="hint">Gmail allows about ${quota} more emails from the app today.</p>` : d.channel === 'email' ? '<p class="hint">Gmail allows apps like this about 100 emails a day.</p>' : ''}
+  ${d.channel === 'whatsapp' ? '<p class="hint">Tap WhatsApp beside each person: a chat opens with their message ready, you press send, then come back for the next. For a big list, download the contacts, save them in your phone, and use a WhatsApp broadcast list instead.</p>' : ''}
+  ${past.length ? `<h3>Sent before</h3><div class="list">${past.map(x => `<div class="row"><span class="bar ${x.venture}"></span><span class="main"><span class="t">${esc(x.subject || (x.body || '').split('\n').find(l => l.trim() && !l.includes('{first}')) || 'Announcement')}</span><span class="s">${fmtDate(x.date)}, ${x.channel === 'email' ? 'email' : 'WhatsApp'} to ${(x.sentTo || []).length}</span></span></div>`).join('')}</div>` : ''}`;
+};
+VIEWS.news.mount = () => {
+  const d = newsDraft, m = $('#main');
+  m.oninput = m.onchange = e => {
+    const el = e.target;
+    if (el.id === 'newsSubj') d.subject = el.value;
+    else if (el.id === 'newsBody') d.body = el.value;
+    else if (el.dataset.newsPick) {
+      const id = el.dataset.newsPick;
+      d.selected = el.checked ? [...new Set([...d.selected, id])] : d.selected.filter(x => x !== id);
+      const btn = $('#newsSendBtn'); if (btn && !newsSending) { btn.textContent = `Send email to ${d.selected.length} ${d.selected.length === 1 ? 'person' : 'people'}`; btn.disabled = !d.selected.length || !DEV.syncUrl; }
+      const h = $('.section-title h3'); if (h) h.textContent = `Who gets it (${d.selected.length} of ${newsEligible(d).length})`;
+    } else if (el.id === 'newsBuyers' && e.type === 'change') { d.onlyBuyers = el.checked; reEdit(); }
+    else if (el.id === 'newsShip' && e.type === 'change') { d.shipmentId = el.value; }
+  };
+};
+ACT.openNews = d => closeSheet(() => go('news', d.ship ? {ship: d.ship} : {}));
+ACT.newsSet = d => {
+  if (newsSending) return;
+  newsDraft[d.k] = d.val;
+  if (d.k === 'venture') { const t = newsTemplate('blank', null, d.val); if (!newsDraft.subject && /^\S+ \{first\},/.test(newsDraft.body)) newsDraft.body = t.body; newsDraft.shipmentId = d.val === 'tlob' ? newsDraft.shipmentId : ''; }
+  newsDraft.sent = {}; newsResetSelection(newsDraft); reEdit();
+};
+ACT.newsTpl = d => {
+  const sh = get('shipments', newsDraft.shipmentId || ($('#newsShip') || {}).value);
+  if (!sh) return toast('Choose a shipment first.');
+  if (newsDraft.body.trim().length > 80 && !confirm('Replace the current message with this wording?')) return;
+  const t = newsTemplate(d.kind, sh, newsDraft.venture); newsDraft.subject = t.subject; newsDraft.body = t.body; reEdit();
+};
+ACT.newsAll = () => { const elig = newsEligible(newsDraft); newsDraft.selected = newsDraft.selected.length === elig.length ? [] : elig.map(c => c.id); reEdit(); };
+function saveNewsRecord(d, ids) {
+  if (!ids.length) return;
+  if (d.recordId) { const r = get('news', d.recordId); if (r) { put('news', {...r, sentTo: [...new Set([...(r.sentTo || []), ...ids])]}); return; } }
+  d.recordId = put('news', {venture: d.venture, channel: d.channel, subject: d.subject, body: d.body, date: today(), shipmentId: d.shipmentId || '', sentTo: ids}).id;
+}
+ACT.newsSend = async (_, btn) => {
+  const d = newsDraft;
+  if (newsSending) { newsStop = true; btn.textContent = 'Stopping…'; return; }
+  const people = d.selected.map(id => get('customers', id)).filter(c => c && validEmail(c.email) && !c.unsub && !d.sent[c.id]);
+  if (!people.length) return toast(d.selected.length ? 'Everyone selected has already been sent this one.' : 'Tick at least one person.');
+  if (!d.subject.trim()) return toast('Add a subject line.');
+  if (!d.body.trim()) return toast('Write a message.');
+  const quota = DEV.mailQuota && DEV.mailQuota.day === today() ? DEV.mailQuota.left : null;
+  if (quota !== null && people.length > quota && !confirm(`Gmail only allows about ${quota} more today. The first ${quota} will go now; send the rest tomorrow. Continue?`)) return;
+  if (!confirm(`Send "${d.subject}" to ${people.length} ${people.length === 1 ? 'person' : 'people'} from ${vName(d.venture)}?`)) return;
+  newsSending = true; newsStop = false;
+  const v = S().ventures[d.venture], done = [], failed = [];
+  for (let i = 0; i < people.length; i++) {
+    if (newsStop) break;
+    const c = people[i];
+    btn.textContent = `Sending ${i + 1} of ${people.length}… tap to stop`;
+    try {
+      const body = personalise(d.body, c);
+      const j = await api('email', {to: c.email.trim(), subject: personalise(d.subject, c), html: newsEmailHTML(body, d.venture), text: body + newsFooterText(d.venture),
+        fromName: v.name, replyTo: v.email || '', from: v.email || ''});
+      if (typeof j.quota === 'number') { DEV.mailQuota = {day: today(), left: j.quota}; saveDev(); }
+      d.sent[c.id] = true; done.push(c.id);
+      if (done.length % 5 === 0) saveNewsRecord(d, done.splice(0)); // keep a record as we go
+    } catch (e) {
+      failed.push(c.name + ': ' + e.message);
+      if (/limit|quota|too many/i.test(e.message)) { newsStop = true; failed.push('Gmail daily limit reached. Send the rest tomorrow; anyone already sent is marked.'); }
+    }
+  }
+  saveNewsRecord(d, done);
+  newsSending = false;
+  const sentCount = Object.keys(d.sent).length;
+  reEdit();
+  if (failed.length) alert('Sent to ' + sentCount + '. Not sent:\n\n' + failed.join('\n'));
+  else toast(newsStop ? 'Stopped. Sent to ' + sentCount + ' so far.' : 'Sent to ' + sentCount + ' ' + (sentCount === 1 ? 'person' : 'people'));
+};
+ACT.newsWa = d => {
+  const c = get('customers', d.id), nd = newsDraft;
+  const text = personalise(nd.body, c).trim() + newsFooterText(nd.venture);
+  window.open('https://wa.me/' + waNumber(c.phone) + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  nd.sent[c.id] = true; saveNewsRecord(nd, [c.id]);
+  setTimeout(reEdit, 400);
+};
+ACT.newsCopy = async () => {
+  const text = newsDraft.body.replace(/\{first\}/g, '').replace(/ ,/g, ',').trim() + newsFooterText(newsDraft.venture);
+  try { await navigator.clipboard.writeText(text); toast('Message copied, ready to paste'); } catch (e) { toast('Could not copy. Select the message and copy it by hand.'); }
+};
+function selectedOrEligible() { const d = newsDraft, ids = d.selected.length ? d.selected : newsEligible(d).map(c => c.id); return ids.map(id => get('customers', id)).filter(Boolean); }
+ACT.newsVcf = () => {
+  const vc = s => String(s || '').replace(/[\\,;]/g, m => '\\' + m).replace(/\n/g, '\\n');
+  const cards = selectedOrEligible().map(c => ['BEGIN:VCARD', 'VERSION:3.0', 'FN:' + vc(c.name), 'N:' + vc(c.name.split(' ').slice(1).join(' ')) + ';' + vc(firstName(c)) + ';;;',
+    c.phone ? 'TEL;TYPE=CELL:+' + waNumber(c.phone) : '', validEmail(c.email) ? 'EMAIL;TYPE=INTERNET:' + c.email.trim() : '', 'ORG:' + vc(vName(newsDraft.venture)) + ' customer', 'END:VCARD'].filter(Boolean).join('\r\n'));
+  if (!cards.length) return toast('No one to include.');
+  download(vShort(newsDraft.venture) + '-customers-' + today() + '.vcf', cards.join('\r\n') + '\r\n', 'text/vcard');
+};
+ACT.newsCsv = () => {
+  const rows = [['Name', 'First name', 'Email', 'Phone', 'Parish', 'Said yes to news', 'Unsubscribed']].concat(
+    selectedOrEligible().map(c => [c.name, firstName(c), c.email, c.phone, c.parish, c.news ? 'Yes' : '', c.unsub ? c.unsub : '']));
+  download(vShort(newsDraft.venture) + '-mailing-list-' + today() + '.csv', toCSV(rows));
+};
+
 /* ---------- GST RETURN ---------- */
 VIEWS.gst = p => {
   const periods = periodsList(), s = S();
@@ -1755,7 +1932,7 @@ ACT.gstCsv = d => {
 
 /* ---------- MORE ---------- */
 VIEWS.more = () => `<h2>More</h2><div class="list">
-  ${[['items', 'Stock list', 'Books and items with prices'], ['expenses', 'Expenses', 'Purchases, imports and costs'], ['gst', 'GST returns', 'Two-monthly figures for myIR'],
+  ${[['news', 'Announcements', 'Email or WhatsApp customers about new books'], ['items', 'Stock list', 'Books and items with prices'], ['expenses', 'Expenses', 'Purchases, imports and costs'], ['gst', 'GST returns', 'Two-monthly figures for myIR'],
      ['settings', 'Settings', 'Business details, sync, printer and backup']].map(([v, t, s]) => `<button class="row" data-act="go" data-view="${v}"><span class="main"><span class="t">${t}</span><span class="s">${s}</span></span></button>`).join('')}
   </div><p class="hint" style="text-align:center">Field &amp; Folio ${APP_VERSION}</p>`;
 
@@ -1828,7 +2005,7 @@ ACT.saveSync = async () => {
   DEV.syncUrl = $('#d_url').value.trim(); DEV.token = $('#d_token').value.trim(); saveDev();
   if (!DEV.syncUrl) { setSync('off'); return toast('Sync turned off. Records stay on this device.'); }
   if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(DEV.syncUrl)) return toast('That does not look like an Apps Script web app address.');
-  try { const j = await api('ping'); toast('Connected to ' + (j.email || 'your Google account')); await sync(false); render(); }
+  try { const j = await api('ping'); if (typeof j.quota === 'number') { DEV.mailQuota = {day: today(), left: j.quota}; saveDev(); } toast('Connected to ' + (j.email || 'your Google account')); await sync(false); render(); }
   catch (e) { setSync('err', e.message); toast('Could not connect: ' + e.message); }
 };
 ACT.printerConnect = async () => {
