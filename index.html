@@ -165,7 +165,7 @@ details>div{padding:0 14px 14px}
    Field & Folio — sales, GST and CRM for Blaise Field Services
    and The Little Orthodox Bookshop. Version 1.0
    ========================================================= */
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.6';
 const LS_KEY = 'ff.data.v1', LS_DEV = 'ff.device.v1';
 const COLLS = ['settings','customers','items','docs','payments','expenses','shipments','preorders','moves','news'];
 const GST_RATE = 0.15;
@@ -1167,6 +1167,11 @@ ACT.quickLabel = () => {
 };
 
 /* ---------- SHIPMENTS (pre-order campaigns) ---------- */
+const poHand = po => po.handover || (po.delivered ? 'received' : '');
+function handChip(po) {
+  const h = poHand(po), when = po.handoverDate ? ' ' + fmtDate(po.handoverDate).replace(/ \d{4}$/, '') : '';
+  return h === 'received' ? `<span class="chip paid">Received${when}</span>` : h === 'sent' ? `<span class="chip quote">Sent${when}</span>` : '';
+}
 const SHIP_STATUS = {interest: 'Taking pre-orders', ordered: 'Ordered', arrived: 'Arrived', closed: 'Closed'};
 function shipStats(sh) {
   const pre = all('preorders').filter(p => p.shipmentId === sh.id);
@@ -1231,11 +1236,14 @@ VIEWS.shipment = p => {
     const c = get('customers', po.customerId), d = get('docs', po.docId);
     const status = d ? statusChip(d) : '<span class="chip">Waiting</span>';
     return `<button class="row" data-act="preorderMenu" data-id="${po.id}"><span class="main"><span class="t">${esc(c ? c.name : 'Unknown')}${po.qty > 1 ? ' × ' + po.qty : ''}</span>
-      <span class="s">${po.delivery ? esc(po.delivery) + ' ' : ''}${status}${po.delivered ? ' <span class="chip paid">Delivered</span>' : ''}</span></span></button>`;
+      <span class="s">${po.delivery ? esc(po.delivery) + ' ' : ''}${status} ${handChip(po)}</span></span></button>`;
   }).join('');
   const next = sh.status === 'interest' ? `<button class="btn primary wide" data-act="shipOrdered">Mark as ordered</button>`
     : sh.status === 'ordered' ? `<button class="btn primary wide" data-act="shipArrived">Mark as arrived</button>`
     : sh.status === 'arrived' ? `<button class="btn wide" data-act="shipClose">Close shipment</button>` : `<button class="btn wide" data-act="shipReopen">Reopen shipment</button>`;
+  const paidPre = st.pre.filter(po => { const d = get('docs', po.docId); return d && docBalance(d) <= 0.005; });
+  const nSent = st.pre.filter(po => poHand(po) === 'sent').length, nRec = st.pre.filter(po => poHand(po) === 'received').length;
+  const toSend = paidPre.filter(po => !poHand(po)).length;
   return `<h2>${esc(sh.title)}</h2><p class="sub">${SHIP_STATUS[sh.status]}, ${money(sh.price)} each</p>
   <div class="card">
     <div class="kv"><span>Pre-ordered</span><b>${st.preQty}</b></div>
@@ -1249,7 +1257,7 @@ VIEWS.shipment = p => {
   <div class="actions">${next}<button class="btn" data-act="addPreorder">Add pre-order</button><button class="btn" data-act="shipLabels">Print all labels</button>
     <button class="btn" data-act="shipInvoiceAll">Invoice all waiting</button><button class="btn" data-act="shipGift">Record a gift</button>
     <button class="btn" data-act="openNews" data-ship="${sh.id}">Announce</button><button class="btn" data-act="shipCost">Add a cost</button><button class="btn" data-act="editShipment">Edit details</button></div>
-  <h3>Pre-orders</h3>${preRows ? `<div class="list">${preRows}</div>` : '<div class="card empty">No pre-orders yet. Add names as they come in from WhatsApp and Facebook.</div>'}
+  <h3>Pre-orders</h3>${st.pre.length ? `<p class="hint" style="margin-top:-4px">${paidPre.length} paid, ${nSent} sent, ${nRec} received${toSend ? `. <b>${toSend} paid and still to send.</b>` : '.'}</p>` : ''}${preRows ? `<div class="list">${preRows}</div>` : '<div class="card empty">No pre-orders yet. Add names as they come in from WhatsApp and Facebook.</div>'}
   <h3>Money</h3><div class="card">
     <div class="kv"><span>Costs (excl. claimable GST)</span><b>${money(st.costNet)}</b></div>
     <div class="kv"><span>Sales invoiced (excl. GST)</span><b>${money(st.income)}</b></div>
@@ -1287,8 +1295,8 @@ ACT.shipClose = () => { put('shipments', {...curShip(), status: 'closed'}); rend
 ACT.shipReopen = () => { put('shipments', {...curShip(), status: 'arrived'}); render(); };
 ACT.shipCost = () => editExpense({shipmentId: curShip().id, venture: 'tlob'});
 ACT.shipLabels = () => {
-  const sh = curShip(), pre = shipStats(sh).pre.filter(p => !p.delivered);
-  if (!pre.length) return toast('No undelivered pre-orders to label.');
+  const sh = curShip(), pre = shipStats(sh).pre.filter(p => !poHand(p));
+  if (!pre.length) return toast('Every pre-order is already marked sent or received.');
   let blocks = [];
   pre.forEach((po, i) => {
     const c = get('customers', po.customerId);
@@ -1362,13 +1370,15 @@ ACT.preorderMenu = d => {
    ${doc ? `<button class="btn primary wide" data-act="openDoc" data-id="${doc.id}">Open ${esc(doc.number)}</button>`
      : `<button class="btn primary wide" data-act="poPaidNow" data-m="Cash">Paid now in cash</button><button class="btn" data-act="poPaidNow" data-m="Bank transfer">Paid by bank transfer</button><button class="btn" data-act="poInvoice">Invoice to pay later</button>`}
    <button class="btn" data-act="poLabel">Print label</button>
-   <button class="btn" data-act="poDelivered">${po.delivered ? 'Mark not delivered' : 'Mark delivered'}</button>
+   <div class="wide"><p style="margin:4px 0 6px"><b>The book</b>${po.handoverDate ? ' <span class="muted">(updated ' + fmtDate(po.handoverDate) + ')</span>' : ''}</p>
+   <div class="seg" style="margin:0">${[['', 'Not yet'], ['sent', 'Sent'], ['received', 'Received']].map(([k, t]) => `<button class="${poHand(po) === k ? 'on' : ''}" data-act="poHand" data-val="${k}">${t}</button>`).join('')}</div>
+   <p class="hint">Sent: posted, or handed to someone to pass on. Received: the customer has it.</p></div>
    <button class="btn" data-act="poEdit">Edit</button>
    ${doc ? '' : '<button class="btn danger" data-act="poRemove">Remove</button>'}</div>`);
   ACT.poPaidNow = x => { const nd = invoicePreorder(sh, po, x.m); closeSheet(() => { toast(nd.number + ' saved as paid'); render(); }); };
   ACT.poInvoice = () => { const nd = invoicePreorder(sh, po, ''); closeSheet(() => { toast(nd.number + ' created'); render(); }); };
   ACT.poLabel = () => closeSheet(() => printPreview('Label', labelBlocks({name: c ? c.name : '', lines: [(po.qty > 1 ? po.qty + ' x ' : '') + sh.title], note: po.delivery || (c && c.delivery) || '', from: vName('tlob')})));
-  ACT.poDelivered = () => { put('preorders', {...po, delivered: !po.delivered}); closeSheet(render); };
+  ACT.poHand = x => { put('preorders', {...po, handover: x.val, handoverDate: x.val ? today() : '', delivered: x.val === 'received'}); closeSheet(() => { toast(x.val ? (c ? c.name + ': ' : '') + (x.val === 'sent' ? 'marked sent' : 'marked received') : 'Cleared'); render(); }); };
   ACT.poEdit = () => closeSheet(() => preorderSheet(sh, po));
   ACT.poRemove = () => { if (confirm('Remove this pre-order?')) { remove('preorders', po.id); closeSheet(render); } };
 };
@@ -1503,6 +1513,45 @@ function itemSheet(it, venture, after) {
 }
 
 /* ---------- EXPENSES ---------- */
+/* ---------- receipts: photo or file, stored in Google Drive ---------- */
+const RECEIPT_MAX = 15 * 1024 * 1024;
+const needsReceipt = e => num(e.amount) > 50 && !(e.files || []).length;
+const receiptChip = e => (e.files || []).length ? ' <span class="chip paid">Receipt</span>' : needsReceipt(e) ? ' <span class="chip overdue">No receipt</span>' : '';
+function receiptFolder(iso) { const p = periodOf(iso), sm = +p.start.slice(5, 7), em = +p.end.slice(5, 7); return p.start.slice(0, 4) + ' ' + MON[sm - 1] + '–' + MON[em - 1]; }
+function readDataURL(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('Could not read the file.')); r.readAsDataURL(f); }); }
+async function prepReceipt(f) {
+  if (/^image\/(jpeg|png|webp|heic|heif)/i.test(f.type)) {
+    try { // shrink phone photos so they upload quickly; still sharp enough to read
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
+      const k = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      return {mime: 'image/jpeg', ext: '.jpg', data: c.toDataURL('image/jpeg', 0.85).split(',')[1]};
+    } catch (e) { /* fall through and send the original */ }
+  }
+  const ext = (f.name.match(/\.[a-z0-9]{2,5}$/i) || [f.type === 'application/pdf' ? '.pdf' : ''])[0].toLowerCase();
+  return {mime: f.type || 'application/octet-stream', ext, data: (await readDataURL(f)).split(',')[1]};
+}
+async function uploadReceipts(expId, files) {
+  let done = 0;
+  for (const f of files) {
+    try {
+      const p = await prepReceipt(f), exp = get('expenses', expId); if (!exp) return;
+      const n = (exp.files || []).length;
+      const base = [exp.date, (exp.supplier || exp.desc || 'Expense').replace(/[\\/:*?"<>|]+/g, ' ').trim(), money(exp.amount)].join(' ') + (n ? ' (' + (n + 1) + ')' : '');
+      toast('Uploading receipt' + (files.length > 1 ? ' ' + (done + 1) + ' of ' + files.length : '') + '…');
+      const j = await api('upload', {name: base + p.ext, mime: p.mime, data: p.data, folder: receiptFolder(exp.date)});
+      const cur = get('expenses', expId);
+      put('expenses', {...cur, files: [...(cur.files || []), {id: j.id, url: j.url, name: j.name, mime: p.mime}]});
+      done++;
+    } catch (e) {
+      alert('Receipt not saved: ' + e.message + '\n\nThe expense itself is saved. Open it again and re-attach the receipt when you have signal.');
+      break;
+    }
+  }
+  if (done) { toast(done === 1 ? 'Receipt saved to Google Drive' : done + ' receipts saved to Google Drive'); if (!isEditing()) render(); }
+}
 VIEWS.expenses = p => {
   const periods = periodsList(), key = p.key || periods[0].key, per = periods.find(x => x.key === key) || periodOf(today());
   const list = all('expenses').filter(e => inPeriod(e.date, per)).sort((a, b) => b.date > a.date ? 1 : -1);
@@ -1510,15 +1559,17 @@ VIEWS.expenses = p => {
   <div class="actions"><button class="btn primary wide" data-act="editExpense">Add expense</button></div>
   <label class="f"><span>GST period</span><select id="expPer">${periods.map(x => `<option value="${x.key}" ${x.key === per.key ? 'selected' : ''}>${x.label}</option>`).join('')}</select></label>
   ${list.length ? `<div class="list">${list.map(e => `<button class="row" data-act="editExpense" data-id="${e.id}"><span class="bar ${e.venture}"></span><span class="main"><span class="t">${esc(e.supplier || e.desc || 'Expense')}</span>
-    <span class="s">${fmtDate(e.date)}, ${esc(e.category || '')}${e.asset ? ', asset' : ''}</span></span><span class="amt">${money(e.amount)}<small>GST ${money(e.gst)}</small></span></button>`).join('')}</div>
+    <span class="s">${fmtDate(e.date)}, ${esc(e.category || '')}${e.asset ? ', asset' : ''}${receiptChip(e)}</span></span><span class="amt">${money(e.amount)}<small>GST ${money(e.gst)}</small></span></button>`).join('')}</div>
     <div class="card"><div class="kv"><span>Total paid</span><b>${money(sum(list, e => e.amount))}</b></div><div class="kv"><span>GST to claim</span><b>${money(sum(list, e => e.gst))}</b></div></div>`
-    : '<div class="card empty">No expenses in this period.</div>'}`;
+    : '<div class="card empty">No expenses in this period.</div>'}
+  ${list.some(needsReceipt) ? `<p class="hint">${list.filter(needsReceipt).length} expense(s) over $50 have no receipt attached. Tap one to add a photo or file.</p>` : ''}`;
 };
 VIEWS.expenses.mount = () => { $('#expPer').addEventListener('change', e => go('expenses', {key: e.target.value}, 'replace')); };
 ACT.editExpense = d => editExpense(d.id ? get('expenses', d.id) : {});
 function editExpense(e) {
   const isNew = !e.id, ships = all('shipments').filter(x => x.status !== 'closed' || x.id === e.shipmentId);
   e = {date: today(), venture: DEV.lastVenture || 'tlob', type: 'nz', category: '', amount: '', gst: '', ...e};
+  let pending = [];
   openSheet(`<h2>${isNew ? 'Add expense' : 'Edit expense'}</h2>
    <div class="seg venture"><button data-v="tlob" class="${e.venture === 'tlob' ? 'on' : ''}" data-act="exV" data-val="tlob">tLOB</button><button data-v="bfs" class="${e.venture === 'bfs' ? 'on' : ''}" data-act="exV" data-val="bfs">Blaise</button></div>
    <label class="f"><span>Date paid</span><input id="exDate" type="date" value="${e.date}"></label>
@@ -1532,15 +1583,36 @@ function editExpense(e) {
    <label class="check"><input type="checkbox" id="exAsset" ${e.asset ? 'checked' : ''}><span>Asset that lasts years (e.g. a chipper). Your accountant depreciates it; the GST is still claimed now.</span></label>
    ${ships.length ? `<label class="f"><span>Part of a shipment (optional)</span><select id="exShip"><option value="">No</option>${ships.map(x => `<option value="${x.id}" ${e.shipmentId === x.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select></label>` : ''}
    <label class="f"><span>Receipt or invoice number (optional)</span><input id="exRef" value="${esc(e.ref || '')}"></label>
+   <div class="card"><p style="margin-top:0"><b>Receipt</b></p><div id="exFiles"></div>
+     ${DEV.syncUrl ? `<div class="grid2" style="margin-top:8px">
+       <label class="btn">Take photo<input type="file" id="exCam" accept="image/*" capture="environment" hidden></label>
+       <label class="btn">Upload file<input type="file" id="exUp" accept="image/*,application/pdf" multiple hidden></label></div>
+       <p class="hint">Saved to your Google Drive when you save the expense, in a folder for the GST period. Use Upload file for PDF bills from email (save the attachment to the phone first).</p>`
+     : '<p class="hint">Connect the Google Sheet in Settings to attach receipts.</p>'}</div>
    <div class="actions"><button class="btn primary wide" data-act="exSave">Save expense</button>
    ${isNew ? '<button class="btn wide" data-act="exSaveMore">Save and add another from the same invoice</button>' : '<button class="btn danger wide" data-act="exDelete">Delete expense</button>'}</div>`, sh => {
     let gstTouched = !isNew;
     const recalc = () => { if (gstTouched) return; $('#exGst').value = num($('#exAmt').value) ? EXP_TYPES[$('#exType').value].gst(num($('#exAmt').value)).toFixed(2) : ''; };
     $('#exAmt', sh).addEventListener('input', recalc);
     $('#exGst', sh).addEventListener('input', () => gstTouched = true);
+    const cam = $('#exCam', sh), up = $('#exUp', sh);
+    [cam, up].forEach(inp => inp && inp.addEventListener('change', ev => {
+      for (const f of ev.target.files) { if (f.size > RECEIPT_MAX) toast(f.name + ' is too large (over 15 MB).'); else pending.push(f); }
+      ev.target.value = ''; drawFiles();
+    }));
+    drawFiles();
     $('#exType', sh).addEventListener('change', ev => { const t = ev.target.value; $('#exHint').textContent = EXP_TYPES[t].hint; $('#exAmtLbl').textContent = t === 'border' ? 'GST amount paid' : 'Amount paid'; gstTouched = false; recalc(); });
   });
   let venture = e.venture;
+  function drawFiles() {
+    const box = $('#exFiles'); if (!box) return;
+    const have = (e.files || []).map((f, i) => `<div class="kv"><a class="linkish" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a><button class="btn small" data-act="exRmFile" data-i="${i}">Remove</button></div>`);
+    const wait = pending.map((f, i) => `<div class="kv"><span>${esc(f.name || 'Photo')} <span class="chip unpaid">Uploads on save</span></span><button class="btn small" data-act="exRmPending" data-i="${i}">Remove</button></div>`);
+    box.innerHTML = have.concat(wait).join('') || `<p class="muted" style="margin:0">None attached.${num(e.amount) > 50 ? ' IRD expects a receipt for purchases over $50.' : ''}</p>`;
+  }
+  ACT.exRmFile = d => { if (!confirm('Remove this receipt from the expense? The file stays in your Google Drive.')) return; e.files = (e.files || []).filter((_, i) => i !== +d.i); drawFiles(); };
+  ACT.exRmPending = d => { pending.splice(+d.i, 1); drawFiles(); };
+  const afterSave = rec => { if (rec && pending.length) { const files = pending; pending = []; uploadReceipts(rec.id, files); } return rec; };
   ACT.exV = d => { venture = d.val; $$('.sheet .seg.venture button').forEach(b => b.classList.toggle('on', b.dataset.val === d.val)); };
   const doSave = () => {
     const amount = r2(num($('#exAmt').value)), date = $('#exDate').value || today();
@@ -1553,8 +1625,8 @@ function editExpense(e) {
     return put('expenses', {...e, venture, date, supplier: $('#exSupp').value.trim(), desc: $('#exDesc').value.trim(), type: $('#exType').value,
       amount, gst, category: $('#exCat').value, asset: $('#exAsset').checked, shipmentId: ($('#exShip') || {}).value || '', ref: $('#exRef').value.trim()});
   };
-  ACT.exSave = () => { if (doSave()) closeSheet(() => { toast('Expense saved'); render(); }); };
-  ACT.exSaveMore = () => { const r = doSave(); if (r) closeSheet(() => { toast('Saved. Add the next line.'); editExpense({date: r.date, venture: r.venture, supplier: r.supplier, shipmentId: r.shipmentId, ref: r.ref, type: r.type === 'border' ? 'duty' : 'border'}); }); };
+  ACT.exSave = () => { const r = afterSave(doSave()); if (r) closeSheet(() => { toast('Expense saved'); render(); }); };
+  ACT.exSaveMore = () => { const r = afterSave(doSave()); if (r) closeSheet(() => { toast('Saved. Add the next line.'); editExpense({date: r.date, venture: r.venture, supplier: r.supplier, shipmentId: r.shipmentId, ref: r.ref, type: r.type === 'border' ? 'duty' : 'border'}); }); };
   ACT.exDelete = () => { if (!confirmFiled(e.date) || !confirm('Delete this expense?')) return; remove('expenses', e.id); closeSheet(() => { toast('Expense deleted'); render(); }); };
 }
 
@@ -1895,6 +1967,7 @@ VIEWS.gst = p => {
     ${box(14, 'Total GST credit', r.box14, true)}
     <div class="kv total"><span><span class="n">15</span>${r.box15 >= 0 ? 'GST to pay' : 'GST refund due to you'}</span><b>${money(Math.abs(r.box15))}</b></div>
   </div>
+  ${r.exps.some(needsReceipt) ? `<div class="card note"><p><b>${r.exps.filter(needsReceipt).length} expense(s) over $50 have no receipt attached.</b> IRD expects a tax invoice for these. Tap one to add it.</p>${r.exps.filter(needsReceipt).map(e => `<div class="kv"><button class="linkish" data-act="editExpense" data-id="${e.id}">${fmtDate(e.date)} ${esc(e.supplier || e.desc || 'Expense')}</button><b>${money(e.amount)}</b></div>`).join('')}</div>` : ''}
   <p class="hint">Box 11 includes GST paid at the border at its GST-inclusive equivalent, so that box 12 equals the GST you actually paid. Overseas supplier invoices, duty and international freight are left out because they carry no NZ GST.</p>
   <details><summary>Adjustments (boxes 9 and 13)</summary><div>
     <p class="hint">Usually zero. Use these for things like private use of business goods, or anything your accountant tells you to adjust.</p>
@@ -1923,9 +1996,9 @@ ACT.saveAdj = d => {
 };
 ACT.gstCsv = d => {
   const per = periodsList().find(x => x.key === d.key), r = gstReport(per);
-  const rows = [['Type', 'Date', 'Venture', 'Reference', 'Party', 'Details', 'Amount incl GST', 'GST']];
+  const rows = [['Type', 'Date', 'Venture', 'Reference', 'Party', 'Details', 'Amount incl GST', 'GST', 'Receipt']];
   r.pays.forEach(x => { const t = docTotals(x.doc), g = t.total ? r2(t.gst * x.amount / t.total) : 0; rows.push(['Payment received', x.date, vShort(x.doc.venture), x.doc.number, custName(x.doc.customerId, x.doc.customerName), x.method || '', x.amount, g]); });
-  r.exps.forEach(e => rows.push(['Expense paid', e.date, vShort(e.venture), e.ref || '', e.supplier || '', [EXP_TYPES[e.type] ? EXP_TYPES[e.type].label : '', e.category, e.desc].filter(Boolean).join(' / '), e.amount, e.gst]));
+  r.exps.forEach(e => rows.push(['Expense paid', e.date, vShort(e.venture), e.ref || '', e.supplier || '', [EXP_TYPES[e.type] ? EXP_TYPES[e.type].label : '', e.category, e.desc].filter(Boolean).join(' / '), e.amount, e.gst, (e.files || []).map(f => f.url).join(' ')]));
   rows.push([], ['Box 5', r.box5], ['Box 6', r.box6], ['Box 8', r.box8], ['Box 9', r.box9], ['Box 10', r.box10], ['Box 11', r.box11], ['Box 12', r.box12], ['Box 13', r.box13], ['Box 14', r.box14], ['Box 15', r.box15]);
   download('GST ' + per.label.replace(/[^\w]+/g, '-') + '.csv', toCSV(rows));
 };
